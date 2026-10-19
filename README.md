@@ -55,13 +55,18 @@ Para correr las pruebas: `pytest`
 | Banco | Todas las filas del extracto, en el mismo orden, con su estado |
 | Sistema | Todas las filas del libro del sistema, en el mismo orden, con su estado |
 
-Columnas de Banco y Sistema: Fecha · Concepto · Descripción · Monto · Estado ·
-N° de cruce · Criterio.
+Columnas de Banco: Fecha · Concepto · Descripción · Monto · Estado · Fila en
+Sistema · Criterio. En Sistema es igual, con "Fila en Banco".
 
 - **Estado**: "Cruzado" o "Sin cruzar".
-- **N° de cruce**: une las filas que cruzaron entre sí. El cruce 12 del banco
-  es el cruce 12 del sistema.
+- **Fila en Sistema / Fila en Banco**: en qué fila del otro documento está la
+  pareja. Si la fila 41 del banco dice 512, la fila 512 del sistema dice 41. Si
+  cruzó con varias filas (pasada de sumas, a futuro), dice "41, 42, 43".
 - **Criterio**: cómo se cruzó. Hoy siempre "Exacto".
+
+Los números de fila son los del output de v3, que tiene exactamente las mismas
+filas que estas hojas: la fila 512 de la hoja Sistema es la fila 512 de
+`sistema_... .xlsx` en `v3/output`. Así se puede corroborar cada cruce en v3.
 
 ## Mapa de carpetas
 
@@ -105,16 +110,18 @@ main()  (cruzar.py)
     │      Agrupa las filas del sistema por fecha y monto. Recorre el banco en
     │      orden: cada fila toma la primera del sistema con la misma fecha y el
     │      mismo monto que todavía no se usó. A las dos les pone "Cruzado", el
-    │      mismo N° de cruce y el criterio "Exacto".
+    │      criterio "Exacto" y, a cada una, la fila de su pareja.
     │
     ├─► 3. controlar()  (motor/salida.py)
     │      En cada lado, cruzado + sin cruzar tiene que dar la entrada (filas y
-    │      suma); lo cruzado tiene que sumar igual en los dos lados; cada N° de
-    │      cruce tiene que estar una vez en cada lado. Si no, frena.
-    │      └─ contar()             filas y suma de la entrada, lo cruzado y lo sin cruzar
+    │      suma); lo cruzado tiene que sumar igual en los dos lados; las parejas
+    │      se tienen que apuntar entre sí. Si no, frena.
+    │      ├─ contar()             filas y suma de la entrada, lo cruzado y lo sin cruzar
+    │      └─ controlar_parejas()  si la 41 del banco dice 512, la 512 del sistema dice 41
     │
     └─► 3. escribir_excel()  (motor/salida.py)
            Escribe las hojas Resumen, Banco y Sistema.
+           ├─ mostrar_filas()      la fila de la pareja: 512, o "41, 42, 43" si son varias
            └─ escribir_hoja()      arma cada hoja con su formato
 
 Si algo frena, cruzar_banco() no escribe, borra el resultado anterior de ese

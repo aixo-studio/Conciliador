@@ -114,9 +114,10 @@ esto, hay que cambiar este repo en el mismo paso.
   `pruebas/datos.py` arma esos archivos.
 - La salida tiene tres hojas: "Resumen", "Banco" y "Sistema". Banco y Sistema
   llevan todas las filas de la entrada, en el mismo orden, con tres columnas
-  más: Estado ("Cruzado" / "Sin cruzar"), N° de cruce (une las filas que
-  cruzaron entre sí) y Criterio (cómo se cruzó). Cada pasada nueva solo cambia
-  el estado de filas "Sin cruzar"; nunca agrega ni saca filas.
+  más: Estado ("Cruzado" / "Sin cruzar"), "Fila en Sistema" / "Fila en Banco"
+  (la fila de la pareja en el otro documento, numerada como en el output de
+  v3, para poder corroborarla ahí) y Criterio (cómo se cruzó). Cada pasada
+  nueva solo cambia el estado de filas "Sin cruzar"; nunca agrega ni saca filas.
 - Cada archivo hace una sola cosa. Nada de archivos sueltos ni de código para
   necesidades que todavía no existen. Menos código es mejor.
 

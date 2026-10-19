@@ -14,8 +14,8 @@ CRITERIO = "Exacto"
 
 def cruzar_exacto(banco: list[Movimiento], sistema: list[Movimiento]) -> int:
     """Recibe los movimientos del banco y los del sistema.
-    Marca como "Cruzado" cada par con la misma fecha y el mismo monto, y le pone
-    el mismo número de cruce a las dos filas. Devuelve cuántos cruces hubo.
+    Marca como "Cruzado" cada par con la misma fecha y el mismo monto, y a cada
+    una le anota la fila de la otra. Devuelve cuántos cruces hubo.
     """
     # Las filas del sistema, agrupadas por fecha y monto, en el orden del archivo.
     disponibles = defaultdict(deque)
@@ -30,8 +30,10 @@ def cruzar_exacto(banco: list[Movimiento], sistema: list[Movimiento]) -> int:
             continue
         del_sistema = candidatos.popleft()
         cruces += 1
+        # Cada una anota la fila de su pareja en el otro documento.
+        del_banco.filas_cruzadas = [del_sistema.fila]
+        del_sistema.filas_cruzadas = [del_banco.fila]
         for movimiento in (del_banco, del_sistema):
             movimiento.estado = CRUZADO
-            movimiento.numero_cruce = cruces
             movimiento.criterio = CRITERIO
     return cruces

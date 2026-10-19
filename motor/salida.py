@@ -10,7 +10,7 @@ from openpyxl.styles import Font
 
 from motor.entrada import CRUZADO, SIN_CRUZAR, Movimiento
 
-COLUMNAS = ("Fecha", "Concepto", "Descripción", "Monto", "Estado", "N° de cruce", "Criterio")
+COLUMNAS = ("Fecha", "Concepto", "Descripción", "Monto", "Estado")
 
 
 def contar(movimientos: list[Movimiento]) -> dict:
@@ -28,7 +28,8 @@ def controlar(banco: list[Movimiento], sistema: list[Movimiento]) -> dict:
     """Recibe los dos lados ya cruzados y controla que no se perdió nada:
     - en cada lado, cruzado + sin cruzar da la entrada, en filas y en suma;
     - lo cruzado suma lo mismo en el banco y en el sistema;
-    - cada número de cruce está una sola vez en cada lado.
+    - las parejas se apuntan entre sí: si la fila 41 del banco dice que cruzó
+      con la 512 del sistema, la 512 del sistema tiene que decir la 41.
     Devuelve los conteos de cada lado. Si algo no cierra, frena.
     """
     conteos = {"Banco": contar(banco), "Sistema": contar(sistema)}
@@ -40,12 +41,33 @@ def controlar(banco: list[Movimiento], sistema: list[Movimiento]) -> dict:
                              f"({filas} filas contra {conteo['Entrada'][0]}).")
     if conteos["Banco"][CRUZADO][1] != conteos["Sistema"][CRUZADO][1]:
         raise ValueError("lo cruzado no suma lo mismo en el banco y en el sistema.")
-    # Los números de cruce: los mismos en los dos lados y sin repetirse.
-    numeros_banco = sorted(m.numero_cruce for m in banco if m.estado == CRUZADO)
-    numeros_sistema = sorted(m.numero_cruce for m in sistema if m.estado == CRUZADO)
-    if numeros_banco != numeros_sistema or len(set(numeros_banco)) != len(numeros_banco):
-        raise ValueError("los números de cruce no coinciden entre el banco y el sistema.")
+    for lado, propios, otros in (("Banco", banco, sistema), ("Sistema", sistema, banco)):
+        controlar_parejas(lado, propios, {movimiento.fila: movimiento for movimiento in otros})
     return conteos
+
+
+def controlar_parejas(lado: str, propios: list[Movimiento], otros_por_fila: dict) -> None:
+    """Recibe un lado, sus movimientos y los del otro lado (por número de fila).
+    Controla que cada fila cruzada apunte a filas cruzadas del otro lado que la
+    apunten de vuelta, y que las sin cruzar no apunten a ninguna. Si no, frena.
+    """
+    for movimiento in propios:
+        if (movimiento.estado == CRUZADO) != bool(movimiento.filas_cruzadas):
+            raise ValueError(f"{lado} fila {movimiento.fila}: el estado no coincide con sus filas cruzadas.")
+        for fila in movimiento.filas_cruzadas:
+            pareja = otros_por_fila.get(fila)
+            if pareja is None or pareja.estado != CRUZADO or movimiento.fila not in pareja.filas_cruzadas:
+                raise ValueError(f"{lado} fila {movimiento.fila}: dice que cruzó con la fila {fila} "
+                                 f"del otro lado, pero esa fila no la apunta de vuelta.")
+
+
+def mostrar_filas(filas: list[int]):
+    """Recibe las filas con las que cruzó un movimiento. Devuelve lo que va en la
+    celda: vacía si no cruzó, el número si es una, "41, 42, 43" si son varias.
+    """
+    if not filas:
+        return None
+    return filas[0] if len(filas) == 1 else ", ".join(str(fila) for fila in filas)
 
 
 def escribir_hoja(libro: Workbook, titulo: str, encabezado, filas, formatos: dict, anchos) -> None:
@@ -76,9 +98,10 @@ def escribir_excel(banco: list[Movimiento], sistema: list[Movimiento], conteos: 
                for lado, conteo in conteos.items() for nombre, (filas, suma) in conteo.items()]
     escribir_hoja(libro, "Resumen", ("Lado", "Qué", "Filas", "Suma"), resumen,
                   {"D": "#,##0.00"}, (10, 12, 10, 20))
-    for titulo, movimientos in (("Banco", banco), ("Sistema", sistema)):
+    # En cada hoja, la columna de la pareja dice en qué fila del otro documento está.
+    for titulo, otro, movimientos in (("Banco", "Sistema", banco), ("Sistema", "Banco", sistema)):
         filas = [(m.fecha, m.concepto, m.descripcion, m.monto_centavos / 100,
-                  m.estado, m.numero_cruce, m.criterio) for m in movimientos]
-        escribir_hoja(libro, titulo, COLUMNAS, filas,
-                      {"A": "DD/MM/YYYY", "D": "#,##0.00"}, (12, 34, 50, 18, 12, 12, 10))
+                  m.estado, mostrar_filas(m.filas_cruzadas), m.criterio) for m in movimientos]
+        escribir_hoja(libro, titulo, COLUMNAS + (f"Fila en {otro}", "Criterio"), filas,
+                      {"A": "DD/MM/YYYY", "D": "#,##0.00"}, (12, 34, 50, 18, 12, 15, 10))
     libro.save(ruta)

@@ -4,11 +4,9 @@ Busca en la salida de la etapa 1 ("conciliacion v3") los dos archivos de un
 banco, controla que cumplan el contrato (ver CLAUDE.md) y los lee. Si algo no
 cumple, frena y dice qué archivo, qué fila y por qué. Nunca modifica la entrada.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
-
 import openpyxl
 
 # La carpeta de datos está al lado de la carpeta del repo.
@@ -27,17 +25,18 @@ CRUZADO = "Cruzado"
 
 @dataclass
 class Movimiento:
-    """Una fila de la entrada. Al leerla queda "Sin cruzar"; el estado, el número
-    de cruce y el criterio los completa el cruce.
+    """Una fila de la entrada. Al leerla queda "Sin cruzar"; el estado, las filas
+    con las que cruzó y el criterio los completa el cruce.
     """
-    fila: int                            # número de fila en el Excel de entrada
+    fila: int              # número de fila en el output de v3 (el mismo en la hoja de v4)
     fecha: date
     concepto: str
     descripcion: str
-    monto_centavos: int                  # el monto en centavos enteros
+    monto_centavos: int    # el monto en centavos enteros
     estado: str = SIN_CRUZAR
-    numero_cruce: Optional[int] = None   # une las filas del banco y del sistema que cruzaron
-    criterio: str = ""                   # cómo se cruzó (hoy, solo "Exacto")
+    # Las filas del otro documento con las que cruzó (en el output de v3).
+    filas_cruzadas: list[int] = field(default_factory=list)
+    criterio: str = ""     # cómo se cruzó (hoy, solo "Exacto")
 
 
 def es_excel(ruta: Path) -> bool:
