@@ -127,3 +127,108 @@ main()  (cruzar.py)
 Si algo frena, cruzar_banco() no escribe, borra el resultado anterior de ese
 banco y lo informa. Al final, main() muestra cuántos bancos se cruzaron.
 ```
+
+## Decisiones
+
+Qué se decidió, por qué, qué se descartó y dónde tiene límites. Sirve para
+explicar y defender el sistema sin abrir el código.
+
+### El cruce lee el output de v3, no los extractos crudos
+- **Por qué:** cada banco entrega su extracto distinto. La etapa 1 ya los deja
+  todos iguales (4 columnas, una hoja), así que el cruce no tiene que saber
+  nada de cada banco. Si mañana entra otro banco, se toca v3 y este repo no.
+- **Descartado:** un solo programa que lea crudos y cruce. Mezcla dos
+  problemas y un cambio en un banco puede romper el cruce.
+- **Límite:** este repo confía en que v3 hizo bien su trabajo. Controla la
+  forma de los archivos (hoja, encabezado, tipos de dato), no que los
+  movimientos sean los del extracto real.
+
+### El cruce exacto exige misma fecha y mismo monto
+- **Por qué:** es la regla más segura. Si dos movimientos tienen la misma
+  fecha y el mismo monto al centavo, casi seguro son el mismo.
+- **Descartado (por ahora):** fechas cercanas, sumas, diferencias de
+  centavos. Cruzan más, pero con más riesgo de cruzar mal. Están en
+  PENDIENTES.md y se suman de a una, decidiendo cada una.
+- **Límite:** un movimiento que el banco registró el lunes y el sistema el
+  viernes no cruza, aunque sea el mismo. Queda "Sin cruzar".
+
+### Los montos se comparan en centavos enteros
+- **Por qué:** las computadoras guardan los decimales con errores mínimos
+  (1500000.25 puede leerse como 1500000.2499999). Comparados así, dos montos
+  iguales podrían parecer distintos. En centavos enteros (150000025) no hay
+  error posible.
+- **Descartado:** comparar con "casi igual" (una tolerancia). Abre la puerta a
+  cruzar montos que en realidad son distintos.
+
+### Los repetidos se emparejan en orden
+- **Qué es:** si el mismo día hay, por ejemplo, 3 movimientos de $100 en el
+  banco y 2 en el sistema, se cruza el 1.º con el 1.º, el 2.º con el 2.º, y
+  el 3.º del banco queda "Sin cruzar".
+- **Por qué:** como son idénticos en fecha y monto, cualquier emparejamiento
+  da los mismos totales. Hacerlo en orden es lo más simple y siempre da el
+  mismo resultado.
+- **Límite:** si los conceptos de esos repetidos son distintos, la pareja
+  puede no ser la "real" (el pago a A cruzado con el registro del pago a B
+  por el mismo monto). Para la conciliación del saldo no cambia nada, pero
+  quien revise fila por fila puede verlo.
+
+### Cómo se busca la pareja (la estructura de datos)
+- **Qué se hace:** las filas del sistema se agrupan por (fecha, monto) en una
+  fila de espera cada grupo, en el orden del archivo. Cada fila del banco va
+  directo a su grupo y toma la primera que espera.
+- **Por qué:** es rápido (no compara cada fila del banco contra todas las del
+  sistema) y respeta el orden, que es lo que hace que los repetidos se
+  emparejen en orden.
+- **Descartado:** comparar todas contra todas. Funciona, pero es más lento y
+  hay que cuidar a mano no usar dos veces la misma fila.
+
+### Ante cualquier cosa rara, frena en vez de seguir
+- **Qué es:** si falta un archivo, sobra uno, la hoja no se llama
+  "Movimientos", el encabezado no es exacto, hay una fila vacía, una fecha que
+  no es fecha o un monto que no es número, ese banco no se cruza y se dice
+  qué archivo, qué fila y por qué.
+- **Por qué:** es una conciliación: una fila salteada en silencio es plata que
+  desaparece del control. Es preferible que no salga nada a que salga algo
+  incompleto que parezca correcto.
+- **Descartado:** saltear filas vacías o "arreglar" datos raros. Es cómodo,
+  pero esconde errores.
+- **Además:** si un banco falla, se borra su resultado anterior, para que
+  nadie use uno viejo creyendo que es el de esta corrida.
+
+### Una hoja por lado, con todas las filas y su estado
+- **Por qué:** cada hoja tiene exactamente las filas de la entrada, en el
+  mismo orden. Así es imposible que una fila se pierda, y las pasadas que
+  vengan (sumas, gastos) solo cambian el estado de las "Sin cruzar".
+- **Descartado:** una hoja de pares (banco | sistema uno al lado del otro).
+  Se lee fácil, pero una suma junta 1 fila con 2 o 3, y eso no entra en pares.
+
+### Cada fila cruzada dice la fila de su pareja
+- **Qué es:** "Fila en Sistema" (en la hoja Banco) y "Fila en Banco" (en la
+  hoja Sistema). Los números son los del output de v3, que tiene las mismas
+  filas que estas hojas.
+- **Por qué:** permite corroborar cada cruce yendo directo a la fila del otro
+  documento, en v4 o en v3.
+- **Descartado:** un número de cruce (1, 2, 3…). Une las dos filas, pero no
+  sirve para ir a buscar la pareja.
+- **Límite:** los números valen mientras el output de v3 no cambie. Si se
+  vuelve a correr v3 con otros archivos, hay que volver a correr este repo.
+
+### Los controles antes de escribir
+- **Qué se controla:** en cada lado, cruzado + sin cruzar = entrada (filas y
+  suma); lo cruzado suma igual en los dos lados; cada pareja se apunta entre
+  sí. La hoja Resumen muestra esos números para revisarlos sin correr nada.
+- **Por qué:** si el código tuviera un error, el control lo frena antes de
+  entregar un resultado equivocado.
+
+### Dónde falla o puede fallar hoy
+- **Archivo de otro banco u otro mes en la carpeta:** se reconoce el banco y
+  el sistema solo por el principio del nombre ("banco_" y "sistema_"). No se
+  controla que el extracto sea del banco de la carpeta ni que las fechas sean
+  del mes. Se ve en pantalla (el rango de fechas y el nombre del archivo),
+  pero no frena. Está en PENDIENTES.md (controles de mes).
+- **Alguien edita a mano el output de v3:** si respeta la forma (hoja,
+  encabezado, tipos), este repo lo acepta. El resguardo es que v3 se puede
+  volver a correr desde los originales y dar el mismo resultado.
+- **Movimientos que no cruzan por regla:** fechas desfasadas, pagos partidos,
+  gastos bancarios. Hoy quedan todos "Sin cruzar"; es esperable, no un error.
+

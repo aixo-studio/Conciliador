@@ -46,19 +46,36 @@ mes. Es la etapa 2 de la conciliación bancaria.
 - Nunca tocar la carpeta "(NO TOCAR)".
 - Explicar en lenguaje claro: el usuario está aprendiendo programación.
 
-## Entender el código antes de avanzar
+## Poder defender lo que se entrega
 
-Matias tiene que poder seguir el código sin leer cada línea. Para eso:
+Este repo es para un cliente. La regla es la "defensa en el pizarrón": Matias
+tiene que poder explicar en cualquier momento, sin abrir el código, cómo
+funciona el sistema y defender las decisiones que se tomaron. No hace falta
+recordar nombres de funciones ni detalles de implementación. Sí tiene que
+poder responder con seguridad preguntas como:
 
-1. **Comentarios en español.** Arriba de cada archivo, de cada función y de
-   cada bloque va una explicación corta y clara de qué hace y para qué sirve
-   dentro del flujo. Nada de comentarios en inglés ni técnicos sin explicar.
-2. **Mapa del flujo.** El README tiene el camino completo desde que se corre
-   `cruzar.py` hasta el resultado: qué función llama a cuál y qué hace cada
-   una. Cada vez que el flujo cambia, el mapa se actualiza en el mismo paso.
-3. **Freno antes de avanzar.** Cada vez que se agrega o se cambia una función,
-   Claude explica qué hace y en qué parte del flujo entra. No se pasa al
-   siguiente paso hasta que Matias confirme que lo entendió.
+- ¿Por qué se hizo X y no Y?
+- ¿Qué pasa si llega un archivo equivocado o con datos mal cargados, por error
+  o a propósito?
+- ¿Cómo se guardan y se comparan los datos, y por qué así?
+- ¿Dónde falla o puede fallar?
+
+Para eso Claude:
+
+1. **Antes de construir**, explica la decisión con sus alternativas, pros y
+   contras, en lenguaje claro.
+2. **Al terminar cada cambio**, entrega la defensa: cómo funciona en pocas
+   líneas, qué se decidió y por qué, qué pasa con datos malos y dónde falla.
+3. **Anota cada decisión en el README**, en la sección "Decisiones": qué se
+   decidió, por qué, qué alternativa se descartó y sus límites conocidos. Así
+   se puede defender meses después.
+4. **No avanza** hasta que Matias confirme que puede defender lo nuevo.
+
+Los comentarios en el código y el mapa del flujo siguen, como apoyo para
+quien lea el repo, pero no son el objetivo.
+
+Excepción: las pruebas de concepto, demos y experimentos no siguen esta regla.
+Ahí manda la velocidad.
 
 ## Dónde están los datos
 
@@ -172,6 +189,7 @@ esto, hay que cambiar este repo en el mismo paso.
 
 ## Documentación
 
-- README.md: qué es, cómo se usa, el mapa de carpetas y el mapa del flujo.
+- README.md: qué es, cómo se usa, el mapa de carpetas, el mapa del flujo y las
+  decisiones (con su porqué, la alternativa descartada y sus límites).
 - PENDIENTES.md: lo abierto, en orden de prioridad, y lo hecho con su fecha.
 - No dejar documentación desactualizada. Distinguir lo hecho de lo propuesto.
