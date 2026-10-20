@@ -109,13 +109,27 @@ esto, hay que cambiar este repo en el mismo paso.
   `<documento>` empieza con `banco_` es el extracto del banco; si empieza con
   `sistema_`, el libro del sistema.
 - Una sola hoja, "Movimientos".
-- Fila 1, el encabezado: Fecha · Concepto · Descripción · Monto. Debajo, un
+- Fila 1, el encabezado: Fecha · Código · Descripción · Monto. Debajo, un
   movimiento por fila, en el orden del original.
-- Fecha: fecha real de Excel. Concepto y Descripción: texto (puede estar
+- Código: el valor puro de la columna que identifica el tipo de movimiento en
+  cada documento. Sirve para reconocer los gastos bancarios.
+
+      banco_bbva          Codigo               ej. 236
+      banco_galicia       Grupo de Conceptos   ej. 000901 - Impuestos
+      banco_supervielle   Concepto             ej. Impuesto Débitos y Créditos/DB
+      sistema_finnegans   Tipo de documento    ej. Orden de pago
+
+  Siempre es texto, tal cual el original: en el BBVA conserva los ceros
+  adelante ("005"). Se compara el valor exacto y nunca se convierte a número.
+  Si llega como número, este repo frena.
+- Fecha: fecha real de Excel. Código y Descripción: texto (puede estar
   vacío). Monto: número con dos decimales (si es redondo puede venir como
   entero); crédito positivo, débito negativo. En el sistema, Debe (entra al
   banco) es positivo y Haber negativo.
 - Los gastos bancarios vienen incluidos en el extracto: v3 no los separa.
+- El texto del concepto del BBVA y del Galicia ya no llega (cambio de contrato
+  del 2026-10-20, commit 306da11 de v3). Si el cruce lo necesita, hay que
+  pedir un cambio de contrato a v3.
 - Al leer el Monto se pasa a centavos enteros redondeando, y se compara y suma
   en centavos: un decimal leído de un Excel puede venir con un error mínimo
   (1500000.2499999 en vez de 1500000.25).

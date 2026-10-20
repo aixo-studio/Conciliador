@@ -7,7 +7,7 @@ from motor.entrada import Movimiento
 
 def movimiento(fila, dia, centavos):
     """Un movimiento inventado de septiembre de 2026."""
-    return Movimiento(fila=fila, fecha=date(2026, 9, dia), concepto="", descripcion="", monto_centavos=centavos)
+    return Movimiento(fila=fila, fecha=date(2026, 9, dia), codigo="", descripcion="", monto_centavos=centavos)
 
 
 def test_cruza_solo_misma_fecha_y_mismo_monto():

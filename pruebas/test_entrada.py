@@ -17,6 +17,11 @@ def test_lee_cada_fila_con_su_monto_en_centavos(tmp_path):
     assert (segundo.fila, segundo.monto_centavos, segundo.estado) == (3, 150000025, "Sin cruzar")
 
 
+def test_el_codigo_se_lee_como_texto_con_sus_ceros(tmp_path):
+    ruta = guardar_entrada(tmp_path / "a.xlsx", [[dia(1), "005", "", 1], [dia(1), None, "", 1]])
+    assert [m.codigo for m in leer_movimientos(ruta)] == ["005", ""]
+
+
 def test_resume_filas_suma_y_fechas(tmp_path):
     ruta = guardar_entrada(tmp_path / "a.xlsx", [[dia(5), "A", "", 10.5], [dia(1), "B", "", -0.25]])
     assert resumir(leer_movimientos(ruta)) == {
@@ -55,8 +60,9 @@ def test_frena_si_no_existe_la_carpeta(tmp_path):
 @pytest.mark.parametrize("como, mensaje", [
     ({"hoja": "Hoja1"}, "una sola hoja"),
     ({"hojas_de_mas": ["Gastos"]}, "una sola hoja"),
-    ({"encabezado": ("Fecha", "Concepto", "Detalle", "Monto")}, "encabezado"),
-    ({"encabezado": ("Fecha", "Concepto", "Descripción", "Monto", "Saldo")}, "encabezado"),
+    ({"encabezado": ("Fecha", "Concepto", "Descripción", "Monto")}, "encabezado"),  # el contrato viejo
+    ({"encabezado": ("Fecha", "Código", "Detalle", "Monto")}, "encabezado"),
+    ({"encabezado": ("Fecha", "Código", "Descripción", "Monto", "Saldo")}, "encabezado"),
 ])
 def test_frena_si_la_hoja_o_el_encabezado_no_cumplen(tmp_path, como, mensaje):
     ruta = guardar_entrada(tmp_path / "a.xlsx", [[dia(1), "A", "", 1]], **como)
@@ -70,6 +76,7 @@ def test_frena_si_la_hoja_o_el_encabezado_no_cumplen(tmp_path, como, mensaje):
     ([[dia(1), "A", "", "1.500,00"]], "fila 2: el Monto no es un número"),
     ([[dia(1), "A", "", 1], [None, None, None, None], [dia(2), "B", "", 2]], "fila 3: está vacía"),
     ([[dia(1), "A", "", 1, "extra"]], "fila 2: tiene datos fuera"),
+    ([[dia(1), 5, "", 1]], "fila 2: el Código no es texto"),
     ([], "no tiene movimientos"),
 ])
 def test_frena_si_una_fila_no_cumple(tmp_path, filas, mensaje):

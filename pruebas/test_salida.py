@@ -56,7 +56,7 @@ def test_cruza_un_banco_y_escribe_el_excel(tmp_path):
     assert libro.sheetnames == ["Resumen", "Banco", "Sistema"]
     banco = list(libro["Banco"].iter_rows(values_only=True))
     sistema = list(libro["Sistema"].iter_rows(values_only=True))
-    assert banco[0] == ("Fecha", "Concepto", "Descripción", "Monto", "Estado", "Fila en Sistema", "Criterio")
+    assert banco[0] == ("Fecha", "Código", "Descripción", "Monto", "Estado", "Fila en Sistema", "Criterio")
     assert sistema[0][5] == "Fila en Banco"
     # La transferencia (fila 3 del banco) cruzó con la orden de pago (fila 3 del sistema).
     assert [fila[4:] for fila in banco[1:]] == [("Sin cruzar", None, None), ("Cruzado", 3, "Exacto")]

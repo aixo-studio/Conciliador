@@ -2,7 +2,7 @@
 
 Etapa 2 de la conciliación bancaria. Toma, para cada banco, los dos archivos
 que deja la etapa 1 ("conciliacion v3"): el extracto del banco y el libro del
-sistema, ya en cuatro columnas (Fecha, Concepto, Descripción, Monto). Los cruza
+sistema, ya en cuatro columnas (Fecha, Código, Descripción, Monto). Los cruza
 y deja un Excel que dice, fila por fila, qué cruzó y con qué. Sin IA: todo son
 reglas fijas en código.
 
@@ -55,7 +55,7 @@ Para correr las pruebas: `pytest`
 | Banco | Todas las filas del extracto, en el mismo orden, con su estado |
 | Sistema | Todas las filas del libro del sistema, en el mismo orden, con su estado |
 
-Columnas de Banco: Fecha · Concepto · Descripción · Monto · Estado · Fila en
+Columnas de Banco: Fecha · Código · Descripción · Monto · Estado · Fila en
 Sistema · Criterio. En Sistema es igual, con "Fila en Banco".
 
 - **Estado**: "Cruzado" o "Sin cruzar".
@@ -142,6 +142,22 @@ explicar y defender el sistema sin abrir el código.
 - **Límite:** este repo confía en que v3 hizo bien su trabajo. Controla la
   forma de los archivos (hoja, encabezado, tipos de dato), no que los
   movimientos sean los del extracto real.
+
+### La segunda columna es "Código", no "Concepto"
+- **Qué es:** en cada documento lleva el valor puro de la columna que el banco
+  usa para identificar el tipo de movimiento: Codigo en BBVA, Grupo de
+  Conceptos en Galicia, Concepto en Supervielle (en el sistema, Tipo de
+  documento). El nombre es genérico para que el encabezado sea igual en todos.
+- **Por qué:** cada banco identifica sus gastos bancarios con una columna
+  distinta, y con esa sola columna alcanza (verificado con septiembre). Con el
+  valor puro, la separación de gastos es comparar valores exactos.
+- **Descartado:** mezclar código y texto en la misma celda ("236 - IVA TASA
+  GRA"), o agregar una quinta columna.
+- **Límite:** el texto del concepto del BBVA y del Galicia ya no llega (ej. el
+  CUIT de una transferencia). Para revisar un "Sin cruzar" hay que ir al
+  extracto original. Si un cruce futuro lo necesita, se pide a v3.
+- **Resguardo:** el Código siempre llega como texto ("005" no es 5). Si llega
+  como número, el programa frena, porque ya no coincidiría con las listas.
 
 ### El cruce exacto exige misma fecha y mismo monto
 - **Por qué:** es la regla más segura. Si dos movimientos tienen la misma

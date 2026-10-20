@@ -16,7 +16,7 @@ SALIDA = CARPETA_DATOS / "v4" / "output"    # lo que deja este repo
 
 # Lo que pide el contrato con la etapa 1.
 HOJA = "Movimientos"
-ENCABEZADO = ("Fecha", "Concepto", "Descripción", "Monto")
+ENCABEZADO = ("Fecha", "Código", "Descripción", "Monto")
 
 # Los estados posibles de una fila.
 SIN_CRUZAR = "Sin cruzar"
@@ -30,7 +30,7 @@ class Movimiento:
     """
     fila: int              # número de fila en el output de v3 (el mismo en la hoja de v4)
     fecha: date
-    concepto: str
+    codigo: str            # identifica el tipo de movimiento; siempre texto ("005" no es 5)
     descripcion: str
     monto_centavos: int    # el monto en centavos enteros
     estado: str = SIN_CRUZAR
@@ -97,7 +97,7 @@ def leer_movimientos(ruta: Path) -> list[Movimiento]:
         libro.close()
     # Fila 1: el encabezado, exacto y sin columnas de más.
     if not filas or filas[0][:4] != ENCABEZADO or not esta_vacia(filas[0][4:]):
-        raise ValueError("el encabezado tiene que ser Fecha · Concepto · Descripción · Monto.")
+        raise ValueError("el encabezado tiene que ser Fecha · Código · Descripción · Monto.")
     movimientos = []
     for numero, valores in enumerate(filas[1:], start=2):
         # Una fila vacía o con datos de más no se saltea: se frena, para no perder nada.
@@ -105,14 +105,18 @@ def leer_movimientos(ruta: Path) -> list[Movimiento]:
             raise ValueError(f"fila {numero}: está vacía.")
         if not esta_vacia(valores[4:]):
             raise ValueError(f"fila {numero}: tiene datos fuera de las 4 columnas.")
-        fecha, concepto, descripcion, monto = (valores + (None,) * 4)[:4]
+        fecha, codigo, descripcion, monto = (valores + (None,) * 4)[:4]
         if isinstance(fecha, datetime):
             fecha = fecha.date()
         if not isinstance(fecha, date):
             raise ValueError(f"fila {numero}: la Fecha no es una fecha ({fecha!r}).")
+        # El Código tiene que llegar como texto: si llega como número, los ceros de
+        # adelante ya se perdieron ("005" quedó en 5) y no coincidiría con ninguna lista.
+        if codigo is not None and not isinstance(codigo, str):
+            raise ValueError(f"fila {numero}: el Código no es texto ({codigo!r}).")
         movimientos.append(Movimiento(
             fila=numero, fecha=fecha,
-            concepto="" if concepto is None else str(concepto),
+            codigo="" if codigo is None else codigo,
             descripcion="" if descripcion is None else str(descripcion),
             monto_centavos=a_centavos(monto, numero)))
     if not movimientos:

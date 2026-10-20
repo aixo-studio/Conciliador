@@ -10,7 +10,7 @@ from openpyxl.styles import Font
 
 from motor.entrada import CRUZADO, SIN_CRUZAR, Movimiento
 
-COLUMNAS = ("Fecha", "Concepto", "Descripción", "Monto", "Estado")
+COLUMNAS = ("Fecha", "Código", "Descripción", "Monto", "Estado")
 
 
 def contar(movimientos: list[Movimiento]) -> dict:
@@ -100,7 +100,7 @@ def escribir_excel(banco: list[Movimiento], sistema: list[Movimiento], conteos: 
                   {"D": "#,##0.00"}, (10, 12, 10, 20))
     # En cada hoja, la columna de la pareja dice en qué fila del otro documento está.
     for titulo, otro, movimientos in (("Banco", "Sistema", banco), ("Sistema", "Banco", sistema)):
-        filas = [(m.fecha, m.concepto, m.descripcion, m.monto_centavos / 100,
+        filas = [(m.fecha, m.codigo, m.descripcion, m.monto_centavos / 100,
                   m.estado, mostrar_filas(m.filas_cruzadas), m.criterio) for m in movimientos]
         escribir_hoja(libro, titulo, COLUMNAS + (f"Fila en {otro}", "Criterio"), filas,
                       {"A": "DD/MM/YYYY", "D": "#,##0.00"}, (12, 34, 50, 18, 12, 15, 10))

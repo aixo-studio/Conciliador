@@ -78,6 +78,9 @@ Qué entrega al final esta etapa y a quién.
   cruce exacto (misma fecha y mismo monto; repetidos emparejados en orden) y
   Excel de salida con hojas Resumen, Banco y Sistema. Septiembre: BBVA 394
   cruces, Galicia 86, Supervielle 54.
+- 2026-10-20 — La entrada pasa a tener "Código" en vez de "Concepto" (cambio de
+  contrato de v3, commit 306da11): el valor puro de la columna que identifica
+  el tipo de movimiento en cada banco. La lectura frena si el Código no es texto.
 - 2026-10-19 — Cada fila cruzada dice en qué fila del otro documento está su
   pareja ("Fila en Sistema" / "Fila en Banco", numeradas como en el output de
   v3), en lugar de un número de cruce.
