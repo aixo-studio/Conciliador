@@ -140,7 +140,10 @@ esto, hay que cambiar este repo en el mismo paso.
   banco), corre cada paso y muestra el resumen.
 - `motor/` tiene los pasos del proceso, un archivo por paso: `entrada.py`
   (encontrar, controlar y leer los dos archivos), `cruce_exacto.py` (misma
-  fecha y mismo monto) y `salida.py` (controlar y escribir el Excel).
+  fecha y mismo monto), `salida.py` (controlar y escribir el Excel) y
+  `gastos.py` (reconocer un gasto bancario; todavía no conectado al cruce).
+- `bancos.json` tiene, por cada banco que sabemos procesar, los códigos que son
+  gasto bancario. Lo propio de cada banco va ahí, no en el código.
 - `pruebas/` tiene una prueba por archivo de `motor/`, con datos inventados;
   `pruebas/datos.py` arma esos archivos.
 - La salida tiene tres hojas: "Resumen", "Banco" y "Sistema". Banco y Sistema

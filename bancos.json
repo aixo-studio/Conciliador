@@ -1,0 +1,17 @@
+{
+  "BBVA": {
+    "nota": "Sale de la columna Codigo del extracto. Lista armada por la persona que concilia (hoja 'Códigos que son Gastos Bancario'). Verificado con septiembre 2026: 836 filas.",
+    "gastos": ["015", "030", "037", "098", "101", "102", "122", "236", "241", "286",
+               "392", "521", "530", "543", "550", "589", "609", "758", "798", "882"]
+  },
+  "Galicia": {
+    "nota": "Sale de la columna Grupo de Conceptos del extracto: el banco ya agrupa sus gastos. Verificado con septiembre 2026: 387 filas.",
+    "gastos": ["000901 - Impuestos", "000808 - Comisiones", "000814 - Intereses"]
+  },
+  "Supervielle": {
+    "nota": "Sale de la columna Concepto del extracto (el banco no trae código). Verificado con septiembre 2026: 89 filas.",
+    "gastos": ["Impuesto Débitos y Créditos/DB", "IVA", "Cobro Percepción IIBB",
+               "Percepción I.V.A. RG. 3337", "Intereses de Sobregiro", "Contras.Ints.Sobreg.",
+               "Comisión Mantenimiento Cuenta", "IMPUESTO A LOS SELLOS"]
+  }
+}

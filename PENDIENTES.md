@@ -53,6 +53,15 @@ Notas:
   cruzar" sin que nadie lo note. Idea: que el resumen avise los conceptos que
   nunca se vieron (habría que guardar también la lista de los que no son gasto).
 
+### 2b. Gastos bancarios: lo que falta
+
+- **Conectar `gastos.py` al cruce**: después del cruce exacto, marcar como
+  "Gasto bancario" las filas del banco que quedaron "Sin cruzar" y tienen un
+  código de la lista. Sumar el renglón al Resumen y que el control sea
+  cruzado + gasto bancario + sin cruzar = entrada. Se planea aparte.
+- **Aviso de códigos nunca vistos**: un gasto con un código nuevo no se
+  reconoce y queda "Sin cruzar" sin aviso.
+
 ### 3. Fuera del alcance actual (anotado para no perderlo)
 
 Con septiembre, después del cruce exacto y de separar gastos:
@@ -74,6 +83,11 @@ Qué entrega al final esta etapa y a quién.
 
 ## Hecho
 
+- 2026-10-21 — bancos.json y motor/gastos.py: cómo se reconoce un gasto
+  bancario en cada banco por su Código (APR-215, primera parte). Con
+  septiembre reconoce BBVA 836 filas (−25.702.218,68), Galicia 387
+  (−58.477.591,43) y Supervielle 89 (−986.203,99), igual que la separación
+  manual. No está conectado al cruce: el Excel no cambia.
 - 2026-10-19 — Base del repo: lectura de la entrada con control del contrato,
   cruce exacto (misma fecha y mismo monto; repetidos emparejados en orden) y
   Excel de salida con hojas Resumen, Banco y Sistema. Septiembre: BBVA 394
