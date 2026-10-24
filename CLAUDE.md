@@ -22,6 +22,13 @@ mes. Es la etapa 2 de la conciliación bancaria.
 - Cada pasada nueva del cruce (sumas, gastos bancarios, lo que venga) se
   decide primero en PENDIENTES.md y se construye solo con el OK del usuario.
 
+Las carpetas locales y los repos de GitHub no se llaman igual:
+
+| Carpeta local     | Repo en GitHub                                             | Etapa                             |
+|-------------------|------------------------------------------------------------|-----------------------------------|
+| conciliacion v3   | https://github.com/aixo-studio/Pre-procesamiento-bancario- | 1 (la que deja los archivos)      |
+| conciliacion v4   | https://github.com/aixo-studio/Conciliador                 | 2 (este repo)                     |
+
 ## Cómo se trabaja
 
 - Claude trabaja solo sobre la carpeta local del repo, en la computadora del
@@ -36,6 +43,10 @@ mes. Es la etapa 2 de la conciliación bancaria.
   tiene que mostrar en pantalla.
 - Los commits y los push los hace siempre el usuario. Claude le pasa los
   comandos y nunca los corre.
+- Antes de cada push, el primer comando es `git remote -v`. Tiene que mostrar
+  `https://github.com/aixo-studio/Conciliador.git` en las dos líneas (fetch y
+  push). Si muestra otro repo (por ejemplo Pre-procesamiento-bancario-), no se
+  pushea: se frena y se revisa.
 - Primero el plan: qué se va a hacer, por qué y cómo queda el resultado. Si hay
   más de una forma, mostrar las opciones con pros y contras. No se construye
   sin el OK del usuario.
