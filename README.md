@@ -76,9 +76,6 @@ motor/                 los pasos del proceso, un archivo por paso
   entrada.py           1. encuentra los 2 archivos, controla el contrato y los lee
   cruce_exacto.py      2. cruza por misma fecha y mismo monto
   salida.py            3. controla que no se perdió nada y escribe el Excel
-  gastos.py            reconoce un gasto bancario según bancos.json (todavía no
-                       está conectado al cruce)
-bancos.json            por cada banco, los códigos que son gasto bancario
 pruebas/               una prueba por paso, con datos inventados
   datos.py             ayudas para armar archivos inventados
 CLAUDE.md              cómo se trabaja en este repo
@@ -162,28 +159,17 @@ explicar y defender el sistema sin abrir el código.
 - **Resguardo:** el Código siempre llega como texto ("005" no es 5). Si llega
   como número, el programa frena, porque ya no coincidiría con las listas.
 
-### Los gastos bancarios se reconocen con una lista por banco, en bancos.json
-- **Qué es:** por cada banco que sabemos procesar, la lista de valores de la
-  columna Código que significan "gasto bancario". Se compara el valor exacto.
-  BBVA: 20 códigos. Galicia: 3 grupos (Impuestos, Comisiones, Intereses).
-  Supervielle: 8 conceptos. La lista solo dice si es gasto, no qué gasto es.
-- **Por qué:** con septiembre, estas listas reconocen exactamente las mismas
-  filas que separó a mano la persona que concilia (836, 387 y 89). Cada código
-  es siempre gasto o siempre no gasto. La lista vive afuera del código:
-  agregar un gasto o un banco es editar el archivo, no el programa.
-- **Por qué JSON:** Python lo lee sin instalar nada. Como no admite
-  comentarios, cada banco tiene un campo "nota" con la explicación.
-- **Controles:** frena si el archivo está mal escrito, si un banco no tiene
-  lista, si un código está dos veces en la lista (suele ser un error al
-  editarla), si un código no es texto o si un campo tiene un nombre que no
-  existe (ej. "gasto" en vez de "gastos"). Si un banco no está en el archivo,
-  frena: no sabemos qué es gasto en ese banco.
-- **Descartado:** reglas por palabras clave (IVA, COMISION…), que se
-  equivocan; y escribir la lista dentro del código.
-- **Límites:** un gasto con un código nuevo, que no está en la lista, no se
-  reconoce. Y si algún día un mismo código fuera a veces gasto y a veces no,
-  la lista no alcanzaría (hoy no pasa en ningún banco).
-- **Estado:** todavía no está conectado al cruce; el Excel no cambia.
+### Este repo no sabe qué es un gasto bancario
+- **Qué es:** qué códigos son gasto en cada banco lo decide v3, con la lista
+  de cada banco en su `configuracion.toml`. En este repo no hay nada propio de
+  un banco.
+- **Por qué:** una sola lista no se puede desincronizar. Agregar un gasto o un
+  banco nuevo es trabajo solo de v3; este repo no se toca.
+- **Descartado:** tener una copia de la lista acá (`bancos.json` y
+  `motor/gastos.py`, APR-215). Nunca se conectó al cruce y se sacó (APR-226).
+- **Límite:** este repo confía en que v3 reconoció bien los gastos. Un gasto
+  con un código nuevo, que no está en la lista de v3, llega como un movimiento
+  común.
 
 ### El cruce exacto exige misma fecha y mismo monto
 - **Por qué:** es la regla más segura. Si dos movimientos tienen la misma

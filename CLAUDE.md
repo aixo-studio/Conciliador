@@ -19,7 +19,7 @@ mes. Es la etapa 2 de la conciliación bancaria.
 - **Dónde termina:** todavía a definir (ver PENDIENTES.md).
 - Convertir documentos crudos a cuatro columnas NO va acá: es la etapa 1. Si un
   pedido es de la etapa 1, frenar y avisar.
-- Cada pasada nueva del cruce (sumas, gastos bancarios, lo que venga) se
+- Cada pasada nueva del cruce (sumas, lo que venga) se
   decide primero en PENDIENTES.md y se construye solo con el OK del usuario.
 
 Las carpetas locales y los repos de GitHub no se llaman igual:
@@ -151,10 +151,9 @@ esto, hay que cambiar este repo en el mismo paso.
   banco), corre cada paso y muestra el resumen.
 - `motor/` tiene los pasos del proceso, un archivo por paso: `entrada.py`
   (encontrar, controlar y leer los dos archivos), `cruce_exacto.py` (misma
-  fecha y mismo monto), `salida.py` (controlar y escribir el Excel) y
-  `gastos.py` (reconocer un gasto bancario; todavía no conectado al cruce).
-- `bancos.json` tiene, por cada banco que sabemos procesar, los códigos que son
-  gasto bancario. Lo propio de cada banco va ahí, no en el código.
+  fecha y mismo monto) y `salida.py` (controlar y escribir el Excel).
+- Este repo no tiene nada propio de un banco: qué es gasto bancario lo decide
+  v3.
 - `pruebas/` tiene una prueba por archivo de `motor/`, con datos inventados;
   `pruebas/datos.py` arma esos archivos.
 - La salida tiene tres hojas: "Resumen", "Banco" y "Sistema". Banco y Sistema
