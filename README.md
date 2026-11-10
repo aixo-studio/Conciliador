@@ -9,6 +9,14 @@ reglas fijas en código.
 Hoy hace una sola pasada: el **cruce exacto** (misma fecha y mismo monto). Las
 pasadas siguientes están en PENDIENTES.md.
 
+**En curso: pasar al contrato nuevo de v3.** Desde el 2026-11-04 v3 ya no
+escribe esos Excel: devuelve una tabla (un DataFrame) con cinco columnas, la
+quinta es la Clase ("Movimiento" o "Gasto bancario"). Este repo todavía lee
+los Excel. Lo primero que se hizo para el contrato nuevo es el control
+(APR-223): está construido y probado, pero **todavía no está conectado** al
+programa. Se conecta cuando el cruce pase a trabajar con la tabla (APR-214).
+En este README, lo que es del contrato nuevo está marcado como "sin conectar".
+
 ## Dónde están los datos
 
 Fuera de los repos, en una carpeta al lado:
@@ -24,10 +32,11 @@ Documents/
 
 ## Cómo se usa
 
-La primera vez, en la terminal, dentro de esta carpeta:
+La primera vez, en la terminal, dentro de esta carpeta. Hace falta Python
+3.12, el mismo que usa v3:
 
 ```
-python3 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -45,7 +54,8 @@ pantalla sale lo que entró de cada lado (filas, suma y fechas) y cuánto cruzó
 Si algo no cumple, ese banco no se escribe, se borra su resultado anterior y
 se dice por qué; los demás siguen.
 
-Para correr las pruebas: `pytest`
+Para correr las pruebas: `python -m pytest` (así usa el Python del `.venv`
+aunque haya otro instalado).
 
 ## El Excel de salida
 
@@ -76,8 +86,12 @@ motor/                 los pasos del proceso, un archivo por paso
   entrada.py           1. encuentra los 2 archivos, controla el contrato y los lee
   cruce_exacto.py      2. cruza por misma fecha y mismo monto
   salida.py            3. controla que no se perdió nada y escribe el Excel
+  recibir.py           (sin conectar) controla la forma de la tabla que llega de v3
+                       y le pone el Estado inicial a cada fila
+  controlar.py         (sin conectar) después del cruce, compara el resultado
+                       contra la tabla tal como llegó
 pruebas/               una prueba por paso, con datos inventados
-  datos.py             ayudas para armar archivos inventados
+  datos.py             ayudas para armar archivos y tablas inventados
 CLAUDE.md              cómo se trabaja en este repo
 PENDIENTES.md          lo que falta decidir y hacer
 ```
@@ -126,6 +140,31 @@ main()  (cruzar.py)
 
 Si algo frena, cruzar_banco() no escribe, borra el resultado anterior de ese
 banco y lo informa. Al final, main() muestra cuántos bancos se cruzaron.
+```
+
+**Sin conectar todavía (contrato nuevo, APR-223).** Así va a quedar el camino
+de cada documento cuando se conecte en APR-214:
+
+```
+la tabla que devuelve v3 (una del banco y una del sistema)
+│
+├─► controlar_forma()  (motor/recibir.py)        chequeo 1
+│      Las cinco columnas, al menos una fila y el tipo de dato de cada
+│      columna, fila por fila. Si hay filas mal, las informa todas juntas.
+│      └─ problema_de_la_fila()   qué tiene mal una fila (lo primero que encuentra)
+│
+├─► la tabla recibida se guarda intacta          chequeo 2 (la foto)
+│
+├─► poner_estado()  (motor/recibir.py)
+│      En una copia, agrega la columna Estado: "Sin cruzar" a los
+│      movimientos y "Gasto bancario" a los gastos bancarios.
+│
+├─► el cruce: solo toca las filas "Sin cruzar"   (APR-214)
+│
+└─► controlar()  (motor/controlar.py)            chequeo 3
+       Compara el resultado contra la tabla recibida: mismas filas, misma
+       suma, cada fila igual a la que llegó, y cada Estado válido y acorde
+       a su Clase. Devuelve el resumen: filas y suma por Estado.
 ```
 
 ## Decisiones
@@ -247,6 +286,95 @@ explicar y defender el sistema sin abrir el código.
   sí. La hoja Resumen muestra esos números para revisarlos sin correr nada.
 - **Por qué:** si el código tuviera un error, el control lo frena antes de
   entregar un resultado equivocado.
+
+### El control del contrato nuevo son tres chequeos (APR-223, sin conectar)
+- **Qué es:** dos chequeos al entrar y uno al final, por cada documento.
+  1. *La forma:* la tabla que llega de v3 tiene las cinco columnas del
+     contrato, al menos una fila y el tipo de dato correcto en cada fila.
+  2. *La foto:* la tabla recibida se guarda intacta; nada la modifica.
+  3. *El cierre:* después del cruce, el resultado se compara contra esa tabla.
+- **Por qué acá y no en v3:** v3 ya controla su parte (lo armado contra el
+  archivo original). Con el contrato nuevo, quien aparta los gastos del cruce
+  es este repo, así que acá está el riesgo de perder una fila.
+- **Por qué dos al entrar:** el primero frena antes de hacer nada si llega algo
+  mal formado, con el motivo exacto. Sin él, una Clase mal escrita se vería
+  recién al final, como "falta una fila".
+- **Límite:** controla contra lo que llegó de v3, no contra el archivo del
+  banco. El tramo de v3 entre su control y la entrega de la tabla no lo
+  verifica nadie (ver PENDIENTES.md).
+
+### La forma se controla contra una copia propia del contrato
+- **Qué es:** los nombres de las cinco columnas y de las dos clases están
+  escritos en `motor/recibir.py`. No se toman del código de v3.
+- **Por qué:** quien recibe controla contra lo que espera. Si se tomaran de v3
+  y v3 cambiara un nombre por error, este repo lo aceptaría sin enterarse.
+- **Qué se exige:** Fecha es una fecha; Código y Descripción son texto (pueden
+  estar vacíos); Monto en centavos es un entero; Clase es "Movimiento" o
+  "Gasto bancario", exacto. En el libro del sistema, todas "Movimiento".
+- **Descartado:** aceptar un monto con decimales aunque sea redondo (100.0).
+  El contrato dice entero; aceptar decimales reabre el problema del redondeo.
+  También se descartó revisar si un Código es gasto: eso es de v3.
+- **Los errores se informan juntos:** se revisan todas las filas y sale un
+  solo mensaje con el número de fila y el motivo de cada una (las primeras 20
+  y cuántas más hay), igual que en v3. La fila 1 es el primer movimiento de la
+  tabla.
+
+### Los gastos bancarios no se separan: se marcan con el Estado
+- **Qué es:** las filas no se mueven. Cada documento es una sola tabla, y cada
+  fila tiene un Estado: "Sin cruzar", "Cruzado" o "Gasto bancario". Las que
+  llegan con Clase "Gasto bancario" arrancan con Estado "Gasto bancario"; el
+  cruce solo toma las "Sin cruzar".
+- **Por qué:** si nada se mueve, nada se puede perder al separar. Es menos
+  código y es como este repo ya trabajaba (una fila, un estado).
+- **Clase y Estado son dos columnas:** la Clase dice qué es la fila (lo dijo
+  v3) y nunca cambia; el Estado dice qué pasó con ella acá. Que la Clase quede
+  intacta es lo que permite controlar el Estado contra ella al final.
+- **Descartado:** partir la tabla en dos (movimientos y gastos). El cruce no
+  vería los gastos, pero habría filas que cambian de lugar y haría falta
+  controlar que las dos partes juntas den el total.
+- **Riesgo y resguardos:** que un cambio futuro haga que el cruce tome un
+  gasto. Lo frenan tres cosas: el cruce solo toma "Sin cruzar"; una prueba
+  que lo intenta a propósito (va con el cruce, APR-214); y el control del
+  final, que frena si un gasto bancario no termina como "Gasto bancario".
+
+### El control del final compara contra la tabla tal como llegó
+- **Qué es:** la tabla recibida nunca se modifica (el Estado se agrega en una
+  copia). Al final se compara el resultado contra ella, en este orden, y frena
+  en la primera regla que falla:
+  1. misma cantidad de filas;
+  2. misma suma (centavos enteros: la comparación es exacta);
+  3. cada fila es la que llegó, en el mismo lugar, en sus cinco columnas;
+  4. cada Estado es uno de los tres;
+  5. Clase y Estado coinciden: un gasto bancario termina "Gasto bancario" y
+     un movimiento nunca.
+- **Por qué contra la tabla entera y no contra dos números:** contar filas y
+  sumar no ve dos errores que se compensan (un monto sube un peso y otro
+  baja un peso), ni una Clase cambiada, ni filas en otro orden. Comparar fila
+  por fila sí. Es el mismo criterio de v3: se compara contra el original, que
+  nadie tocó.
+- **Cruzado + Sin cruzar + Gasto bancario = lo que entró** sale de las reglas
+  1, 2 y 4 juntas. El control devuelve esos números (el resumen).
+- **Cada regla tiene su mensaje,** y el mensaje dice dónde mirar: un gasto
+  "Cruzado" es un problema del cruce; una fila que falta, de algún paso que
+  perdió filas.
+- **Límites:** frena en el primer error (acá un error es una falla del
+  programa, no un dato a corregir). Corre una vez por documento: las reglas
+  que comparan banco contra sistema (lo cruzado suma igual, las parejas se
+  apuntan) siguen en `motor/salida.py` hasta APR-214. No ve un gasto que v3
+  no reconoció: llega como "Movimiento" y pasa.
+
+### pandas es una dependencia
+- **Por qué:** la tabla que devuelve v3 es un DataFrame de pandas. Trabajar
+  sobre esa misma tabla evita convertirla a otra estructura, que sería un paso
+  más donde perder filas.
+- **Límite:** una dependencia más para instalar. Su versión está fija en
+  `requirements.txt`, la misma que usa v3.
+
+### La columna Criterio se va a sacar (decidido, se aplica en APR-214)
+- **Por qué:** hoy hay un solo criterio ("Exacto"), así que dice lo mismo en
+  todas las filas cruzadas. Vuelve cuando exista una segunda pasada.
+- **Se queda:** la fila de la pareja, que es lo que permite corroborar cada
+  cruce.
 
 ### Dónde falla o puede fallar hoy
 - **Archivo de otro banco u otro mes en la carpeta:** se reconoce el banco y

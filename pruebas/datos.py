@@ -1,9 +1,11 @@
-"""Ayudas para las pruebas: arman archivos de entrada inventados, como los deja la etapa 1."""
+"""Ayudas para las pruebas: arman archivos y tablas de entrada inventados, como los deja la etapa 1."""
 from datetime import datetime
 
 import openpyxl
+import pandas
 
 from motor.entrada import ENCABEZADO
+from motor.recibir import COLUMNAS
 
 
 def guardar_entrada(ruta, filas, hoja="Movimientos", encabezado=ENCABEZADO, hojas_de_mas=()):
@@ -31,3 +33,14 @@ def carpeta_banco(base, banco_filas, sistema_filas, nombre="BBVA"):
     guardar_entrada(carpeta / "banco_bbva - extracto.xlsx", banco_filas)
     guardar_entrada(carpeta / "sistema_finnegans - libro.xlsx", sistema_filas)
     return carpeta
+
+
+def tabla(filas):
+    """Recibe filas (día, código, descripción, centavos, clase). Devuelve la tabla
+    (DataFrame) con la forma y los tipos que entrega la etapa 1.
+    """
+    armadas = [(dia(numero), codigo, descripcion, centavos, clase)
+               for numero, codigo, descripcion, centavos, clase in filas]
+    return pandas.DataFrame(armadas, columns=COLUMNAS).astype(
+        {"Fecha": "datetime64[ns]", "Código": str, "Descripción": str,
+         "Monto en centavos": "int64", "Clase": str})
