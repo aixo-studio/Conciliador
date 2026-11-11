@@ -2,7 +2,27 @@
 
 ## Abierto, en orden de prioridad
 
-### 1. Definir la lógica del cruce
+### 1. Pasar la entrada y el cruce al contrato del 2026-11-04 de v3 (APR-214)
+
+Hoy el programa lee los Excel que v3 ya no escribe. Falta:
+
+- Recibir las dos tablas (DataFrame) de v3 en vez de leer Excel. La llamada a
+  v3 se puede simular al principio.
+- **Conectar el control** (APR-223, hecho): `controlar_forma()` y
+  `poner_estado()` al entrar, y `controlar()` después del cruce.
+- Hacer el cruce exacto sobre la tabla, tomando solo las filas "Sin cruzar".
+  Con su prueba: un gasto bancario con la misma fecha y el mismo monto que
+  una fila del sistema no cruza.
+- Pasar a la tabla las dos reglas que comparan banco contra sistema (lo
+  cruzado suma igual; las parejas se apuntan), hoy en `motor/salida.py`.
+- Sacar la columna Criterio (decidido el 2026-11-10).
+- Sacar `motor/entrada.py`; "Sin cruzar" y "Cruzado" pasan a `motor/recibir.py`.
+- Copiar al CLAUDE.md el bloque del contrato del 2026-11-04, igual al de v3.
+- Decidir: qué número lleva la fila de la pareja (ya no hay Excel de v3; el
+  control usa la posición en la tabla, la fila 1 es el primer movimiento) y
+  cómo se muestran los gastos bancarios en el Excel de salida.
+
+### 2. Definir la lógica del cruce
 
 Alcance decidido: dos pasadas de cruce, una después de la otra.
 
@@ -15,52 +35,15 @@ Alcance decidido: dos pasadas de cruce, una después de la otra.
 
 Decisiones a tomar:
 
-- **Gastos bancarios**: idea acordada, separarlos del banco después del cruce
-  exacto y antes de las sumas (así no generan sumas falsas). Falta confirmar
-  que entran en este alcance. Criterio verificado con septiembre (ver punto 2).
+- **Gastos bancarios**: los reconoce v3, con la lista de cada banco. Llegan
+  con Clase "Gasto bancario" y quedan con Estado "Gasto bancario" desde el
+  principio; ninguna pasada los toma (decidido el 2026-11-10, APR-223).
 - **Más de un candidato** en la pasada de sumas: qué se hace (idea: no cruzar
   y anotar cuántos candidatos había).
 - **Sumas**: si cruzan directo o quedan "a revisar" para que alguien confirme.
 - **Pasada de sumas**: si lee el Excel del cruce exacto y completa solo lo
   "Sin cruzar", o si se corre todo junto.
 - **Controles de mes**: qué hacer si una fila tiene fecha de otro mes.
-
-### 2. Gastos bancarios: lista de conceptos por banco
-
-Verificado con septiembre 2026 contra la separación que hizo la persona a mano:
-separa exactamente las mismas filas en los tres bancos. Ningún concepto aparece
-a veces como gasto y a veces no.
-
-- **BBVA** (el concepto *empieza con*; después el banco agrega fecha y número):
-  IVA TASA GRA, IVA TASA RED, PER.MISIONES, PER. TUCUMAN, REG REC SIRC,
-  PERCEPCION I, COMISION TRA, COMISION GES, COMISION MAN, COMISION MOV,
-  COM.TRANSF, COM.RECH.DEP, FE-COMIS. TR, LEY NRO 25.4, IMPUESTO LEY,
-  OG-GESTION D, RIESGO CONTI, SELLADO, INT.COB.ACUE.
-  → 836 filas, −25.702.218,68 (incluye 8 devoluciones en positivo).
-- **Galicia** (el *código* del concepto): 907171, 907172, 907173, 907174,
-  907176, 907188, 907307, 907376, 907394, 907751, 907118, 905130.
-  → 387 filas, −58.477.591,43.
-- **Supervielle** (el concepto *exacto*): Impuesto Débitos y Créditos/DB, IVA,
-  Cobro Percepción IIBB, Percepción I.V.A. RG. 3337, Intereses de Sobregiro,
-  Contras.Ints.Sobreg., Comisión Mantenimiento Cuenta, IMPUESTO A LOS SELLOS.
-  → 89 filas, −986.203,99.
-
-Notas:
-- La persona arma la lista del BBVA por la columna Código, que no llega en el
-  contrato de v3. "Empieza con" el concepto da lo mismo en septiembre; si
-  algún día no alcanza, habría que sumar el código al contrato (avisar en v3).
-- Riesgo: un concepto de gasto nuevo no estaría en la lista y quedaría "sin
-  cruzar" sin que nadie lo note. Idea: que el resumen avise los conceptos que
-  nunca se vieron (habría que guardar también la lista de los que no son gasto).
-
-### 2b. Gastos bancarios: lo que falta
-
-- **Conectar `gastos.py` al cruce**: después del cruce exacto, marcar como
-  "Gasto bancario" las filas del banco que quedaron "Sin cruzar" y tienen un
-  código de la lista. Sumar el renglón al Resumen y que el control sea
-  cruzado + gasto bancario + sin cruzar = entrada. Se planea aparte.
-- **Aviso de códigos nunca vistos**: un gasto con un código nuevo no se
-  reconoce y queda "Sin cruzar" sin aviso.
 
 ### 3. Fuera del alcance actual (anotado para no perderlo)
 
@@ -73,16 +56,35 @@ Con septiembre, después del cruce exacto y de separar gastos:
 
 ### 4. Datos que no llegan en el contrato de v3
 
-El número de cheque del BBVA (Número Documento), el código del BBVA y los datos
-extra del Galicia (Leyendas Adicionales) no están en las 4 columnas. Si el
-cruce los necesita, hay que cambiar el contrato de v3.
+El número de cheque del BBVA (Número Documento), el texto del Concepto del
+BBVA y del Galicia y los datos extra del Galicia (Leyendas Adicionales) no
+llegan. Si el cruce los necesita, hay que cambiar el contrato de v3.
 
 ### 5. Definir dónde termina la etapa
 
 Qué entrega al final esta etapa y a quién.
 
+### 6. Un tramo sin verificar en v3 (para hablar con Luciano)
+
+v3 controla lo armado contra el archivo original, y después arma la tabla y
+le pone la Clase a cada fila. Ese último paso no lo verifica nadie: este repo
+controla contra la tabla que recibe, no contra el archivo del banco. El
+riesgo es bajo (ese paso no mueve ni filtra filas), pero es un tramo sin
+control. Si se quiere cerrar, lo haría v3 antes de devolver la tabla, sin
+cambiar el contrato.
+
 ## Hecho
 
+- 2026-11-10 — Control del contrato nuevo de v3 (APR-223): `motor/recibir.py`
+  (la forma de la tabla que llega y el Estado inicial de cada fila) y
+  `motor/controlar.py` (después del cruce, el resultado contra la tabla tal
+  como llegó). Probado con tablas inventadas; **sin conectar** al programa
+  hasta APR-214, y sin verificar con datos reales. El repo pasa a Python 3.12
+  y suma pandas, como v3. El programa sigue corriendo igual que antes.
+- 2026-11-06 — Se sacan `bancos.json` y `motor/gastos.py` (APR-226): qué es
+  gasto bancario lo decide v3. La idea de avisar los códigos de gasto nunca
+  vistos quedó en el PENDIENTES de v3, donde vive la lista. La salida no
+  cambia.
 - 2026-10-21 — bancos.json y motor/gastos.py: cómo se reconoce un gasto
   bancario en cada banco por su Código (APR-215, primera parte). Con
   septiembre reconoce BBVA 836 filas (−25.702.218,68), Galicia 387
