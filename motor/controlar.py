@@ -6,8 +6,7 @@ falló; así el error indica en qué parte del proceso está el problema.
 """
 import pandas
 
-from motor.entrada import CRUZADO, SIN_CRUZAR
-from motor.recibir import CLASE_GASTO_BANCARIO, COLUMNAS, ESTADO, GASTO_BANCARIO
+from motor.recibir import CLASE_GASTO_BANCARIO, COLUMNAS, CRUZADO, ESTADO, GASTO_BANCARIO, SIN_CRUZAR
 
 MONTO = "Monto en centavos"
 # Los únicos estados con los que puede terminar una fila.

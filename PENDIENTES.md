@@ -2,25 +2,21 @@
 
 ## Abierto, en orden de prioridad
 
-### 1. Pasar la entrada y el cruce al contrato del 2026-11-04 de v3 (APR-214)
+### 1. Comunicación con v3 (APR-235, lo tiene Luciano)
 
-Hoy el programa lee los Excel que v3 ya no escribe. Falta:
+Lo que falta para correr de punta a punta, ahora que el cruce ya trabaja
+sobre las tablas:
 
-- Recibir las dos tablas (DataFrame) de v3 en vez de leer Excel. La llamada a
-  v3 se puede simular al principio.
-- **Conectar el control** (APR-223, hecho): `controlar_forma()` y
-  `poner_estado()` al entrar, y `controlar()` después del cruce.
-- Hacer el cruce exacto sobre la tabla, tomando solo las filas "Sin cruzar".
-  Con su prueba: un gasto bancario con la misma fecha y el mismo monto que
-  una fila del sistema no cruza.
-- Pasar a la tabla las dos reglas que comparan banco contra sistema (lo
-  cruzado suma igual; las parejas se apuntan), hoy en `motor/salida.py`.
-- Sacar la columna Criterio (decidido el 2026-11-10).
-- Sacar `motor/entrada.py`; "Sin cruzar" y "Cruzado" pasan a `motor/recibir.py`.
-- Copiar al CLAUDE.md el bloque del contrato del 2026-11-04, igual al de v3.
-- Decidir: qué número lleva la fila de la pareja (ya no hay Excel de v3; el
-  control usa la posición en la tabla, la fila 1 es el primer movimiento) y
-  cómo se muestran los gastos bancarios en el Excel de salida.
+- Conseguir las dos tablas de una cuenta: llamar a `convertir_documento()` de
+  v3, una vez por archivo, y pasárselas a `cruzar_cuenta()` con la ruta de
+  salida.
+- La terminal: qué recibe, qué muestra y dónde escribe. La vieja (`cruzar.py`)
+  se borró junto con la entrada por Excel.
+- Al fallar una corrida, borrar el resultado anterior de esa cuenta (lo hacía
+  la terminal vieja; `cruzar_cuenta()` no escribe nada si algo falla, pero
+  tampoco borra lo que había de antes).
+- Verificar septiembre 2026 contra la referencia fija del CLAUDE.md: hasta
+  ahora todo está probado con tablas inventadas.
 
 ### 2. Definir la lógica del cruce
 
@@ -75,6 +71,13 @@ cambiar el contrato.
 
 ## Hecho
 
+- 2026-11-11 — El cruce pasa al contrato del 2026-11-04 (APR-214):
+  `cruzar_cuenta()` encadena recibir (chequeos y Estado), el cruce exacto solo
+  sobre filas "Sin cruzar", el control contra la tabla recibida, los controles
+  entre los dos lados y el Excel de siete columnas (entra Clase, sale
+  Criterio; la pareja es la fila de la otra hoja, contando desde la 2). Se
+  borran `cruzar.py` y `motor/entrada.py`. Probado con tablas inventadas; la
+  corrida real y septiembre quedan para APR-235.
 - 2026-11-10 — Control del contrato nuevo de v3 (APR-223): `motor/recibir.py`
   (la forma de la tabla que llega y el Estado inicial de cada fila) y
   `motor/controlar.py` (después del cruce, el resultado contra la tabla tal

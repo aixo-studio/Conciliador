@@ -10,12 +10,17 @@ Un programa en Python, sin IA, que cruza los movimientos del extracto de un
 banco con los del libro del sistema financiero de esa cuenta, para el mismo
 mes. Es la etapa 2 de la conciliación bancaria.
 
-- **Dónde empieza:** lee los archivos que deja la etapa 1 (el repo
-  "conciliacion v3"), tal como dice el contrato de más abajo. Lo primero que
-  hace es controlar que la entrada cumpla ese contrato; si no cumple, frena y
-  dice por qué.
-- **Qué hace hoy:** el cruce exacto (misma fecha y mismo monto) y escribe, por
-  banco, `conciliacion resultados/v4/output/<AAAA-MM>/<Banco>/cruce - <Banco> <AAAA-MM>.xlsx`.
+- **Dónde empieza:** recibe las dos tablas (DataFrame) de una cuenta, tal como
+  las devuelve la etapa 1 (ver el contrato de más abajo): la del extracto del
+  banco y la del libro del sistema. Lo primero que hace es controlar que
+  cumplan ese contrato; si no cumplen, frena y dice por qué.
+- **Qué hace hoy:** marca los gastos bancarios con su Estado, hace el cruce
+  exacto (misma fecha y mismo monto) sobre el resto, controla que no se perdió
+  nada y escribe el Excel donde le indique quien llama. Todo lo encadena
+  `cruzar_cuenta()` (en `cruzar_cuenta.py`).
+- **Quién consigue las tablas:** llamar a v3 y la terminal son la comunicación
+  entre los repos (APR-235). Hasta que exista, este repo no se corre de punta
+  a punta: se verifica con `python -m pytest`.
 - **Dónde termina:** todavía a definir (ver PENDIENTES.md).
 - Convertir documentos crudos a cuatro columnas NO va acá: es la etapa 1. Si un
   pedido es de la etapa 1, frenar y avisar.
@@ -90,83 +95,98 @@ Ahí manda la velocidad.
 
 ## Dónde están los datos
 
-Los datos viven fuera de los repos, en una carpeta al lado de ellos:
-
-    Documents/
-      conciliacion v3/                  repo de la etapa 1
-      conciliacion v4/                  este repo
-      conciliacion resultados/
-        v3/output/<AAAA-MM>/<Banco>/    la entrada de este repo (la escribe v3)
-        v4/output/<AAAA-MM>/<Banco>/    la salida de este repo
-
-El repo encuentra la carpeta de datos al lado de él (ruta relativa). Este
-repo nunca escribe en `v3/` ni modifica un archivo de entrada.
-
-Cómo se corre:
-
-    python cruzar.py 2026-09            todos los bancos del mes
-    python cruzar.py 2026-09 BBVA       un banco
+Los archivos reales viven fuera del repo y nunca se suben. Este repo ya no
+lee ninguna carpeta: recibe las dos tablas por parámetro y escribe el Excel
+del cruce en la ruta que le indica quien llama. Qué carpeta es esa y cómo se
+corre todo junto se definen con la comunicación entre los repos (APR-235).
 
 ## La entrada: el contrato con la etapa 1
 
-Así deja los archivos "conciliacion v3". Este repo lo controla al leer: si
-algo no cumple, frena y dice qué archivo, qué fila y por qué. Si v3 cambia
-esto, hay que cambiar este repo en el mismo paso.
+Las dos tablas que recibe `cruzar_cuenta()` son las que devuelve
+`convertir_documento()` de v3, una llamada por archivo. Este repo controla al
+recibirlas que cumplan el contrato; si algo no cumple, frena y dice qué fila
+y por qué. Si v3 cambia esto, hay que cambiar este repo en el mismo paso.
 
-- Carpeta: `conciliacion resultados/v3/output/<AAAA-MM>/<Banco>/`.
-- En cada carpeta de banco hay exactamente un archivo del banco y uno del
-  sistema.
-- Nombre: `<documento> - <nombre del original sin extensión>.xlsx`. Si
-  `<documento>` empieza con `banco_` es el extracto del banco; si empieza con
-  `sistema_`, el libro del sistema.
-- Una sola hoja, "Movimientos".
-- Fila 1, el encabezado: Fecha · Código · Descripción · Monto. Debajo, un
-  movimiento por fila, en el orden del original.
+<!-- CONTRATO v3 → v4 · INICIO. Este bloque es igual, palabra por palabra, en el
+     CLAUDE.md de "conciliacion v3" y en el de "conciliacion v4". Si cambia,
+     cambia en los dos en el mismo paso, con la fecha nueva. -->
+
+**Contrato del 2026-11-04.** Lo que devuelve la etapa 1 (carpeta "conciliacion
+v3", en GitHub Pre-procesamiento-bancario-) a la etapa 2 (carpeta
+"conciliacion v4", en GitHub Conciliador), que la llama.
+
+- La llamada: `convertir_documento(ruta_archivo, banco, es_erp)`, en
+  `convertir.py`. Una por archivo: v4 la llama dos veces por cuenta, con el
+  extracto del banco (`es_erp=False`) y con el libro del sistema
+  (`es_erp=True`), y en las dos pasa el mismo `banco` (BBVA, Galicia,
+  Supervielle, como en `configuracion.toml` de v3).
+- Si el archivo no se puede convertir (banco desconocido, faltan columnas,
+  filas que no se pueden leer, filas o suma que no cierran), frena con un
+  `ValueError` que dice por qué: qué columnas faltan y en qué fila, o todas
+  las filas con errores y su motivo. No devuelve nada a medias.
+- Lo que devuelve: un DataFrame de pandas, una fila por movimiento, en el
+  orden del original, con estas cinco columnas en este orden:
+
+      Fecha               fecha (datetime64)
+      Código              texto
+      Descripción         texto (puede estar vacío)
+      Monto en centavos   entero (int64)
+      Clase               texto: "Gasto bancario" o "Movimiento"
+
 - Código: el valor puro de la columna que identifica el tipo de movimiento en
-  cada documento. Sirve para reconocer los gastos bancarios.
+  cada documento, sin mezclar nada. Siempre texto, tal cual el original, con
+  sus ceros adelante ("005", nunca 5).
 
-      banco_bbva          Codigo               ej. 236
-      banco_galicia       Grupo de Conceptos   ej. 000901 - Impuestos
-      banco_supervielle   Concepto             ej. Impuesto Débitos y Créditos/DB
-      sistema_finnegans   Tipo de documento    ej. Orden de pago
+      extracto BBVA         Codigo               ej. 236
+      extracto Galicia      Grupo de Conceptos   ej. 000901 - Impuestos
+      extracto Supervielle  Concepto             ej. Impuesto Débitos y Créditos/DB
+      libro del sistema     Tipo de documento    ej. Orden de pago
 
-  Siempre es texto, tal cual el original: en el BBVA conserva los ceros
-  adelante ("005"). Se compara el valor exacto y nunca se convierte a número.
-  Si llega como número, este repo frena.
-- Fecha: fecha real de Excel. Código y Descripción: texto (puede estar
-  vacío). Monto: número con dos decimales (si es redondo puede venir como
-  entero); crédito positivo, débito negativo. En el sistema, Debe (entra al
-  banco) es positivo y Haber negativo.
-- Los gastos bancarios vienen incluidos en el extracto: v3 no los separa.
-- El texto del concepto del BBVA y del Galicia ya no llega (cambio de contrato
-  del 2026-10-20, commit 306da11 de v3). Si el cruce lo necesita, hay que
-  pedir un cambio de contrato a v3.
-- Al leer el Monto se pasa a centavos enteros redondeando, y se compara y suma
-  en centavos: un decimal leído de un Excel puede venir con un error mínimo
-  (1500000.2499999 en vez de 1500000.25).
+- Monto en centavos: entero, sin decimales (−136550 es −1.365,50). Crédito
+  positivo, débito negativo. En el sistema, Debe (entra al banco) es positivo
+  y Haber negativo. Se compara y se suma tal cual, sin redondear.
+- Clase: "Gasto bancario" si el Código está en la lista `gastos` del banco en
+  `configuracion.toml` de v3 (comparación exacta); si no, "Movimiento". En el
+  libro del sistema, todas son "Movimiento". v4 cruza las filas
+  "Movimiento" y usa las "Gasto bancario" para el control final.
+- Las filas con fecha de otro mes salen tal cual: controlarlas es de v4.
+- El saldo inicial del libro del sistema no sale.
+- Lo que no llega: el texto del Concepto del BBVA y del Galicia, el número de
+  cheque del BBVA (Número Documento), las Leyendas Adicionales del Galicia y
+  el saldo del extracto. Si la etapa 2 necesita alguno, es un cambio de
+  contrato.
+
+Cambios:
+- 2026-11-04: v3 deja de escribir Excel en carpetas y devuelve un DataFrame.
+  El monto pasa a centavos enteros y los gastos se marcan con la columna
+  Clase en vez de ir a una hoja aparte. v3 ya no recibe el mes.
+- 2026-10-30 (APR-222 de v3): el extracto pasa a tener dos hojas; los gastos
+  bancarios salen separados en "Gastos bancarios".
+- 2026-10-20 (commit 306da11 de v3): la segunda columna pasa de Concepto a
+  Código.
+
+<!-- CONTRATO v3 → v4 · FIN -->
 
 ## Orden del repositorio
 
-- `cruzar.py` es la puerta de entrada: recibe el mes (y opcionalmente el
-  banco), corre cada paso y muestra el resumen.
-- `motor/` tiene los pasos del proceso, un archivo por paso: `entrada.py`
-  (encontrar, controlar y leer los dos archivos), `cruce_exacto.py` (misma
-  fecha y mismo monto) y `salida.py` (controlar y escribir el Excel).
-- `motor/recibir.py` y `motor/controlar.py` son del contrato nuevo de v3 (la
-  tabla con la columna Clase): controlar la forma de la tabla que llega,
-  ponerle el Estado a cada fila y, después del cruce, comparar el resultado
-  contra la tabla tal como llegó (APR-223). Están hechos y probados, pero
-  todavía no conectados a `cruzar.py`: se conectan en APR-214.
+- `cruzar_cuenta.py` es la puerta de entrada: `cruzar_cuenta(tabla_banco,
+  tabla_sistema, ruta_salida)` recibe las dos tablas de una cuenta, corre cada
+  paso y escribe el Excel. Es lo que llama quien consigue las tablas (APR-235).
+- `motor/` tiene los pasos del proceso, un archivo por paso: `recibir.py`
+  (controlar la forma de cada tabla y ponerle su Estado inicial),
+  `cruce_exacto.py` (misma fecha y mismo monto, solo filas "Sin cruzar"),
+  `controlar.py` (después del cruce, cada tabla contra la recibida) y
+  `salida.py` (los controles que unen a los dos lados y el Excel).
 - Este repo no tiene nada propio de un banco: qué es gasto bancario lo decide
-  v3.
-- `pruebas/` tiene una prueba por archivo de `motor/`, con datos inventados;
-  `pruebas/datos.py` arma esos archivos.
+  v3, y acá llega en la columna Clase.
+- `pruebas/` tiene una prueba por archivo de `motor/` y una de la corrida
+  completa, con datos inventados; `pruebas/datos.py` arma esas tablas.
 - La salida tiene tres hojas: "Resumen", "Banco" y "Sistema". Banco y Sistema
-  llevan todas las filas de la entrada, en el mismo orden, con tres columnas
-  más: Estado ("Cruzado" / "Sin cruzar"), "Fila en Sistema" / "Fila en Banco"
-  (la fila de la pareja en el otro documento, numerada como en el output de
-  v3, para poder corroborarla ahí) y Criterio (cómo se cruzó). Cada pasada
-  nueva solo cambia el estado de filas "Sin cruzar"; nunca agrega ni saca filas.
+  llevan todas las filas de la entrada, en el mismo orden, con siete columnas:
+  Fecha · Código · Descripción · Monto · Clase · Estado · "Fila en Sistema" /
+  "Fila en Banco" (la fila de la pareja en la otra hoja de este mismo archivo;
+  el encabezado es la fila 1 y los datos empiezan en la 2). Cada pasada nueva
+  solo cambia el estado de filas "Sin cruzar"; nunca agrega ni saca filas.
 - Cada archivo hace una sola cosa. Nada de archivos sueltos ni de código para
   necesidades que todavía no existen. Menos código es mejor.
 
@@ -188,6 +208,9 @@ esto, hay que cambiar este repo en el mismo paso.
       BBVA         394 cruces | banco sin cruzar 1.051 | sistema sin cruzar 135
       Galicia       86 cruces | banco sin cruzar   414 | sistema sin cruzar  13
       Supervielle   54 cruces | banco sin cruzar   118 | sistema sin cruzar  11
+
+  (La referencia se vuelve a comprobar cuando APR-235 conecte v3; hasta
+  entonces, las pruebas usan tablas inventadas.)
 
 - Lo que no se comprobó se informa como "sin verificar". Nunca presentar como
   comprobado algo que no se comprobó.

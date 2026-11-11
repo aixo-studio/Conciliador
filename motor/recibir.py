@@ -9,16 +9,17 @@ from datetime import datetime
 
 import pandas
 
-from motor.entrada import SIN_CRUZAR
-
 # Lo que este repo espera recibir de la etapa 1. Está escrito acá, y no se toma
 # de v3, a propósito: si v3 cambiara algo por error, este control lo frena.
 COLUMNAS = ["Fecha", "Código", "Descripción", "Monto en centavos", "Clase"]
 CLASE_MOVIMIENTO = "Movimiento"
 CLASE_GASTO_BANCARIO = "Gasto bancario"
 
-# La columna que agrega este repo, y el estado con el que arranca cada Clase.
+# La columna que agrega este repo y sus tres estados posibles: con qué arranca
+# cada Clase, y "Cruzado", que lo pone el cruce cuando encuentra la pareja.
 ESTADO = "Estado"
+SIN_CRUZAR = "Sin cruzar"
+CRUZADO = "Cruzado"
 GASTO_BANCARIO = "Gasto bancario"
 ESTADO_INICIAL = {CLASE_MOVIMIENTO: SIN_CRUZAR, CLASE_GASTO_BANCARIO: GASTO_BANCARIO}
 
