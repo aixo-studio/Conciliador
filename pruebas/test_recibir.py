@@ -5,7 +5,7 @@ propósito. Todo con datos inventados.
 import pandas
 import pytest
 
-from motor.recibir import COLUMNAS, controlar_forma, poner_estado
+from motor.recibir import COLUMNAS, controlar_forma, poner_estado, recibir_documento
 from pruebas.datos import tabla
 
 # Un extracto inventado: dos movimientos y dos gastos bancarios, mezclados.
@@ -102,3 +102,22 @@ def test_la_tabla_recibida_no_cambia_al_poner_el_estado():
     # La recibida sigue igual, sin la columna nueva; y la copia conserva las cinco columnas.
     assert recibida.equals(tabla(FILAS))
     assert resultado[COLUMNAS].equals(recibida)
+
+
+def test_recibir_documento_devuelve_la_foto_y_la_copia_con_estado():
+    foto, resultado = recibir_documento(tabla(FILAS), es_sistema=False)
+    # La foto es lo que entró, sin la columna nueva; la copia la tiene.
+    assert foto.equals(tabla(FILAS))
+    assert list(resultado["Estado"]) == ["Sin cruzar", "Gasto bancario", "Sin cruzar", "Gasto bancario"]
+
+
+def test_recibir_documento_frena_si_la_tabla_no_cumple_el_contrato():
+    with pytest.raises(ValueError, match="la Clase tiene que ser"):
+        recibir_documento(cambiada("Clase", "Otra"), es_sistema=False)
+
+
+def test_tocar_la_copia_no_toca_la_foto():
+    foto, resultado = recibir_documento(tabla(FILAS), es_sistema=False)
+    resultado.loc[0, "Monto en centavos"] = 1
+    resultado.loc[0, "Estado"] = "Cruzado"
+    assert foto.equals(tabla(FILAS))

@@ -83,6 +83,17 @@ def explicar_errores_de_filas(errores: list[str]) -> str:
     return "\n".join(lineas)
 
 
+def recibir_documento(tabla: pandas.DataFrame, es_sistema: bool) -> tuple[pandas.DataFrame, pandas.DataFrame]:
+    """Recibe la tabla de un documento y si es el libro del sistema. Es la única
+    puerta por la que un documento entra al proceso.
+    Controla la forma (si no cumple, frena sin devolver nada) y devuelve dos
+    tablas: la recibida, intacta, que queda de testigo para el control del
+    final, y la copia con el Estado, sobre la que trabaja el cruce.
+    """
+    controlar_forma(tabla, es_sistema)
+    return tabla, poner_estado(tabla)
+
+
 def poner_estado(tabla: pandas.DataFrame) -> pandas.DataFrame:
     """Recibe la tabla de un documento, ya controlada.
     Devuelve una copia con la columna Estado: "Sin cruzar" para los movimientos
