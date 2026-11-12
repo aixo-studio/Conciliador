@@ -5,8 +5,8 @@ Se rompen los resultados a propósito. Todo con datos inventados.
 import pandas
 import pytest
 
-from motor.controlar import controlar
-from motor.recibir import poner_estado
+from motor.controlar import validar_y_resumir_tabla_cruzada
+from motor.recibir import crear_copia_con_estado
 from pruebas.datos import tabla
 
 # Un extracto inventado: tres movimientos y dos gastos bancarios, mezclados.
@@ -22,14 +22,14 @@ def ya_cruzado():
     la primera fila "Cruzado", los otros dos movimientos "Sin cruzar".
     """
     recibida = tabla(FILAS)
-    resultado = poner_estado(recibida)
+    resultado = crear_copia_con_estado(recibida)
     resultado.loc[0, "Estado"] = "Cruzado"
     return recibida, resultado
 
 
 def test_un_resultado_correcto_pasa_y_devuelve_el_resumen():
     recibida, resultado = ya_cruzado()
-    assert controlar(resultado, recibida) == {
+    assert validar_y_resumir_tabla_cruzada(resultado, recibida) == {
         "Entrada": (5, 25000000 - 1250 - 15000000 - 950 + 8000000),
         "Cruzado": (1, 25000000),
         "Sin cruzar": (2, -15000000 + 8000000),
@@ -38,7 +38,7 @@ def test_un_resultado_correcto_pasa_y_devuelve_el_resumen():
 
 def test_cruzado_mas_sin_cruzar_mas_gasto_bancario_da_la_entrada():
     recibida, resultado = ya_cruzado()
-    resumen = controlar(resultado, recibida)
+    resumen = validar_y_resumir_tabla_cruzada(resultado, recibida)
     partes = [resumen["Cruzado"], resumen["Sin cruzar"], resumen["Gasto bancario"]]
     assert (sum(filas for filas, _ in partes), sum(suma for _, suma in partes)) == resumen["Entrada"]
 
@@ -46,20 +46,20 @@ def test_cruzado_mas_sin_cruzar_mas_gasto_bancario_da_la_entrada():
 def test_frena_si_se_pierde_una_fila():
     recibida, resultado = ya_cruzado()
     with pytest.raises(ValueError, match="llegaron 5 y quedaron 4"):
-        controlar(resultado.iloc[:-1], recibida)
+        validar_y_resumir_tabla_cruzada(resultado.iloc[:-1], recibida)
 
 
 def test_frena_si_se_duplica_una_fila():
     recibida, resultado = ya_cruzado()
     with pytest.raises(ValueError, match="llegaron 5 y quedaron 6"):
-        controlar(pandas.concat([resultado, resultado.iloc[[0]]]), recibida)
+        validar_y_resumir_tabla_cruzada(pandas.concat([resultado, resultado.iloc[[0]]]), recibida)
 
 
 def test_frena_si_cambia_un_monto():
     recibida, resultado = ya_cruzado()
     resultado.loc[2, "Monto en centavos"] += 1
     with pytest.raises(ValueError, match="la suma no cierra"):
-        controlar(resultado, recibida)
+        validar_y_resumir_tabla_cruzada(resultado, recibida)
 
 
 def test_frena_si_dos_montos_cambian_y_se_compensan():
@@ -68,39 +68,39 @@ def test_frena_si_dos_montos_cambian_y_se_compensan():
     resultado.loc[0, "Monto en centavos"] += 1
     resultado.loc[2, "Monto en centavos"] -= 1
     with pytest.raises(ValueError, match="la fila 1 no es la que llegó"):
-        controlar(resultado, recibida)
+        validar_y_resumir_tabla_cruzada(resultado, recibida)
 
 
 def test_frena_si_las_filas_quedan_en_otro_orden():
     recibida, resultado = ya_cruzado()
     desordenado = resultado.iloc[[1, 0, 2, 3, 4]]
     with pytest.raises(ValueError, match="la fila 1 no es la que llegó"):
-        controlar(desordenado, recibida)
+        validar_y_resumir_tabla_cruzada(desordenado, recibida)
 
 
 def test_frena_si_cambia_la_clase_de_una_fila():
     recibida, resultado = ya_cruzado()
     resultado.loc[1, "Clase"] = "Movimiento"
     with pytest.raises(ValueError, match="la fila 2 no es la que llegó"):
-        controlar(resultado, recibida)
+        validar_y_resumir_tabla_cruzada(resultado, recibida)
 
 
 def test_frena_si_una_fila_queda_con_un_estado_que_no_existe():
     recibida, resultado = ya_cruzado()
     resultado.loc[2, "Estado"] = "Otro"
     with pytest.raises(ValueError, match="fila 3: el Estado no es válido"):
-        controlar(resultado, recibida)
+        validar_y_resumir_tabla_cruzada(resultado, recibida)
 
 
 def test_frena_si_un_gasto_bancario_queda_cruzado():
     recibida, resultado = ya_cruzado()
     resultado.loc[1, "Estado"] = "Cruzado"
     with pytest.raises(ValueError, match='fila 2: es un gasto bancario y quedó "Cruzado"'):
-        controlar(resultado, recibida)
+        validar_y_resumir_tabla_cruzada(resultado, recibida)
 
 
 def test_frena_si_un_movimiento_queda_como_gasto_bancario():
     recibida, resultado = ya_cruzado()
     resultado.loc[2, "Estado"] = "Gasto bancario"
     with pytest.raises(ValueError, match='fila 3: es un movimiento y quedó "Gasto bancario"'):
-        controlar(resultado, recibida)
+        validar_y_resumir_tabla_cruzada(resultado, recibida)

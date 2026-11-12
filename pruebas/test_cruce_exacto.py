@@ -3,14 +3,14 @@
 la fila de la otra hoja del Excel de salida. Todo con datos inventados.
 """
 from motor.cruce_exacto import cruzar_exacto
-from motor.recibir import recibir_documento
+from motor.recibir import crear_copia_con_estado
 from pruebas.datos import tabla
 
 
 def lados(filas_banco, filas_sistema):
     """Devuelve las dos tablas listas para cruzar (recibidas y con su Estado)."""
-    _, banco = recibir_documento(tabla(filas_banco), es_sistema=False)
-    _, sistema = recibir_documento(tabla(filas_sistema), es_sistema=True)
+    banco = crear_copia_con_estado(tabla(filas_banco))
+    sistema = crear_copia_con_estado(tabla(filas_sistema))
     return banco, sistema
 
 

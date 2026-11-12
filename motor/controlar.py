@@ -1,9 +1,4 @@
-"""Paso 3 del proceso: controlar, después del cruce, que no se perdió nada.
-
-Compara el resultado de un documento contra su tabla tal como llegó de la
-etapa 1, que nunca se modificó. Si algo no cierra, frena y dice qué regla
-falló; así el error indica en qué parte del proceso está el problema.
-"""
+"""Paso 3: valida cada tabla después del cruce y resume sus movimientos."""
 import pandas
 
 from motor.recibir import CLASE_GASTO_BANCARIO, COLUMNAS, CRUZADO, ESTADO, GASTO_BANCARIO, SIN_CRUZAR
@@ -13,31 +8,34 @@ MONTO = "Monto en centavos"
 ESTADOS = [CRUZADO, SIN_CRUZAR, GASTO_BANCARIO]
 
 
-def controlar(resultado: pandas.DataFrame, recibida: pandas.DataFrame) -> dict:
-    """Recibe el resultado de un documento (sus cinco columnas más el Estado) y
-    la tabla tal como llegó. Controla que estén todas las filas, que sumen lo
-    mismo, que cada fila sea la que llegó y que cada Estado sea válido y
-    coincida con su Clase. Si algo no cierra, frena con un error.
-    Devuelve el resumen: filas y suma (en centavos) de la entrada y de cada Estado.
+def validar_y_resumir_tabla_cruzada(
+    tabla_cruzada: pandas.DataFrame, tabla_original: pandas.DataFrame
+) -> dict:
+    """Compara la tabla cruzada de siete columnas con la original de cinco.
+    Verifica que se conserven las filas, su orden y sus datos, y que cada
+    Estado sea válido para su Clase. Si falla un control, informa el error.
+    Devuelve la cantidad de filas y el total en centavos de la entrada y de cada Estado.
     """
     # 1. Ninguna fila perdida ni duplicada.
-    if len(resultado) != len(recibida):
-        raise ValueError(f"se perdieron o se duplicaron filas: llegaron {len(recibida)} "
-                         f"y quedaron {len(resultado)}.")
+    if len(tabla_cruzada) != len(tabla_original):
+        raise ValueError(f"se perdieron o se duplicaron filas: llegaron {len(tabla_original)} "
+                         f"y quedaron {len(tabla_cruzada)}.")
     # 2. La plata es la misma. Son centavos enteros: la comparación es exacta.
-    llego, quedo = int(recibida[MONTO].sum()), int(resultado[MONTO].sum())
-    if quedo != llego:
-        raise ValueError(f"la suma no cierra: llegó {llego / 100:.2f} y quedó {quedo / 100:.2f}.")
-    # 3. Cada fila es la que llegó, en el mismo lugar. Atrapa lo que las dos
-    #    cuentas de arriba no ven: dos errores que se compensan, o un dato cambiado.
-    filas_que_llegaron = recibida.itertuples(index=False, name=None)
-    filas_que_quedaron = resultado[COLUMNAS].itertuples(index=False, name=None)
-    for numero, (fila_llego, fila_quedo) in enumerate(zip(filas_que_llegaron, filas_que_quedaron), start=1):
-        if fila_quedo != fila_llego:
-            raise ValueError(f"la fila {numero} no es la que llegó: llegó {fila_llego} y quedó {fila_quedo}.")
+    total_original_en_centavos = int(tabla_original[MONTO].sum())
+    total_de_tabla_cruzada_en_centavos = int(tabla_cruzada[MONTO].sum())
+    if total_de_tabla_cruzada_en_centavos != total_original_en_centavos:
+        raise ValueError(f"la suma no cierra: llegó {total_original_en_centavos / 100:.2f} "
+                         f"y quedó {total_de_tabla_cruzada_en_centavos / 100:.2f}.")
+    # 3. Compara las cinco columnas de entrada en la misma posición.
+    #    Así detecta cambios que se compensan en el total. Estado se valida aparte.
+    filas_originales = tabla_original.itertuples(index=False, name=None)
+    filas_cruzadas = tabla_cruzada[COLUMNAS].itertuples(index=False, name=None)
+    for numero, (fila_original, fila_cruzada) in enumerate(zip(filas_originales, filas_cruzadas), start=1):
+        if fila_cruzada != fila_original:
+            raise ValueError(f"la fila {numero} no es la que llegó: llegó {fila_original} y quedó {fila_cruzada}.")
     # 4 y 5. Cada Estado es uno de los tres, y coincide con su Clase: un gasto
     #    bancario termina como "Gasto bancario" y un movimiento nunca.
-    for numero, (clase, estado) in enumerate(zip(resultado["Clase"], resultado[ESTADO]), start=1):
+    for numero, (clase, estado) in enumerate(zip(tabla_cruzada["Clase"], tabla_cruzada[ESTADO]), start=1):
         if estado not in ESTADOS:
             raise ValueError(f"fila {numero}: el Estado no es válido ({estado!r}).")
         if clase == CLASE_GASTO_BANCARIO and estado != GASTO_BANCARIO:
@@ -45,8 +43,8 @@ def controlar(resultado: pandas.DataFrame, recibida: pandas.DataFrame) -> dict:
         if clase != CLASE_GASTO_BANCARIO and estado == GASTO_BANCARIO:
             raise ValueError(f'fila {numero}: es un movimiento y quedó "{estado}".')
     # Con todo lo anterior, Cruzado + Sin cruzar + Gasto bancario da la entrada.
-    resumen = {"Entrada": (len(recibida), llego)}
+    resumen = {"Entrada": (len(tabla_original), total_original_en_centavos)}
     for estado in ESTADOS:
-        montos = resultado.loc[resultado[ESTADO] == estado, MONTO]
+        montos = tabla_cruzada.loc[tabla_cruzada[ESTADO] == estado, MONTO]
         resumen[estado] = (len(montos), int(montos.sum()))
     return resumen

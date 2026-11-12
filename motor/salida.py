@@ -1,9 +1,7 @@
-"""Paso 4 del proceso: los controles entre los dos lados y el Excel de salida.
+"""Valida la relación entre las tablas cruzadas y escribe el Excel.
 
-Los controles de cada tabla por separado ya corrieron (motor/controlar.py).
-Acá se controla lo que une a los dos lados y se escribe el Excel con tres
-hojas: "Resumen" (los números de los controles), "Banco" y "Sistema" (todas
-las filas de la entrada, en el mismo orden, con su estado y su pareja).
+Los controles leen los estados y las referencias de pareja. La escritura
+genera tres hojas: Resumen, Banco y Sistema.
 """
 from pathlib import Path
 
@@ -18,27 +16,31 @@ from motor.recibir import CRUZADO, ESTADO
 COLUMNAS_DE_LA_HOJA = ("Fecha", "Código", "Descripción", "Monto", "Clase", "Estado")
 
 
-def controlar_lados(banco: pandas.DataFrame, sistema: pandas.DataFrame) -> None:
-    """Recibe las dos tablas ya cruzadas y controladas por separado.
-    Controla lo que las une: lo cruzado suma lo mismo en las dos, y las parejas
-    se apuntan entre sí. Si algo no cierra, frena con un error.
+def validar_cruce_entre_tablas(banco: pandas.DataFrame, sistema: pandas.DataFrame) -> None:
+    """Suma en centavos las filas con Estado "Cruzado" de cada tabla.
+    Si los totales coinciden, valida las referencias de pareja en ambos sentidos.
+    Si falla un control, informa el error.
     """
     sumas = {lado: int(tabla.loc[tabla[ESTADO] == CRUZADO, MONTO].sum())
              for lado, tabla in (("Banco", banco), ("Sistema", sistema))}
     if sumas["Banco"] != sumas["Sistema"]:
         raise ValueError(f"lo cruzado no suma lo mismo en el banco ({sumas['Banco'] / 100:.2f}) "
                          f"y en el sistema ({sumas['Sistema'] / 100:.2f}).")
-    controlar_parejas("Banco", banco, sistema, es_sistema=False)
-    controlar_parejas("Sistema", sistema, banco, es_sistema=True)
+    validar_referencias_de_pareja("Banco", banco, sistema, es_sistema=False)
+    validar_referencias_de_pareja("Sistema", sistema, banco, es_sistema=True)
 
 
-def controlar_parejas(lado: str, propios: pandas.DataFrame, otros: pandas.DataFrame,
-                      es_sistema: bool) -> None:
-    """Recibe un lado y el otro. Controla que cada fila "Cruzado" apunte a una
-    fila "Cruzado" del otro lado que la apunte de vuelta, y que las demás no
-    apunten a ninguna. Si no, frena.
+def validar_referencias_de_pareja(
+    lado: str, tabla_de_origen: pandas.DataFrame, tabla_de_destino: pandas.DataFrame,
+    es_sistema: bool,
+) -> None:
+    """Comprueba que cada fila cruzada apunte a una fila existente y cruzada.
+    La fila de destino debe apuntar de vuelta a la de origen. Las filas con
+    otros estados deben tener la referencia vacía. Si todo coincide, sigue
+    con la próxima fila.
     """
-    for posicion, (estado, pareja) in enumerate(zip(propios[ESTADO], propios[COLUMNA_PAREJA[es_sistema]])):
+    referencias = tabla_de_origen[COLUMNA_PAREJA[es_sistema]]
+    for posicion, (estado, pareja) in enumerate(zip(tabla_de_origen[ESTADO], referencias)):
         fila = posicion + PRIMERA_FILA_DE_DATOS
         # Una fila lleva pareja si y solo si está "Cruzado".
         if (estado == CRUZADO) == pandas.isna(pareja):
@@ -46,11 +48,11 @@ def controlar_parejas(lado: str, propios: pandas.DataFrame, otros: pandas.DataFr
         if pandas.isna(pareja):
             continue
         posicion_ajena = int(pareja) - PRIMERA_FILA_DE_DATOS
-        if not 0 <= posicion_ajena < len(otros):
+        if not 0 <= posicion_ajena < len(tabla_de_destino):
             raise ValueError(f"{lado} fila {fila}: apunta a la fila {int(pareja)}, "
                              "que no existe en el otro lado.")
-        apuntada = otros[COLUMNA_PAREJA[not es_sistema]].iat[posicion_ajena]
-        if (otros[ESTADO].iat[posicion_ajena] != CRUZADO
+        apuntada = tabla_de_destino[COLUMNA_PAREJA[not es_sistema]].iat[posicion_ajena]
+        if (tabla_de_destino[ESTADO].iat[posicion_ajena] != CRUZADO
                 or pandas.isna(apuntada) or int(apuntada) != fila):
             raise ValueError(f"{lado} fila {fila}: dice que cruzó con la fila {int(pareja)} "
                              "del otro lado, pero esa fila no la apunta de vuelta.")

@@ -33,10 +33,10 @@ def preparar_columna_de_pareja(tabla: pandas.DataFrame, es_sistema: bool) -> Non
 
 
 def cruzar_exacto(banco: pandas.DataFrame, sistema: pandas.DataFrame) -> int:
-    """Recibe las tablas del banco y del sistema, con su Estado.
-    Marca como "Cruzado" cada par con la misma fecha y el mismo monto, y a cada
-    una le anota la fila de la otra en el Excel de salida. Devuelve cuántos
-    cruces hubo.
+    """Modifica las dos tablas de trabajo que recibe.
+    Para cada pareja con la misma fecha y el mismo monto, cambia el Estado de
+    ambas filas a "Cruzado" y anota en cada una la fila de su pareja en el Excel.
+    Devuelve solo la cantidad de parejas que cruzó.
     """
     preparar_columna_de_pareja(banco, es_sistema=False)
     preparar_columna_de_pareja(sistema, es_sistema=True)
