@@ -1,73 +1,72 @@
-"""Paso 3 del proceso: controlar que no se perdió nada y escribir el Excel.
+"""Valida la relación entre las tablas cruzadas y escribe el Excel.
 
-El Excel tiene tres hojas: "Resumen" (los controles), "Banco" y "Sistema"
-(todas las filas de la entrada, en el mismo orden, con su estado).
+Los controles leen los estados y las referencias de pareja. La escritura
+genera tres hojas: Resumen, Banco y Sistema.
 """
 from pathlib import Path
 
+import pandas
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
-from motor.entrada import CRUZADO, SIN_CRUZAR, Movimiento
+from motor.controlar import MONTO
+from motor.cruce_exacto import COLUMNA_PAREJA, PRIMERA_FILA_DE_DATOS
+from motor.recibir import CRUZADO, ESTADO
 
-COLUMNAS = ("Fecha", "Código", "Descripción", "Monto", "Estado")
+COLUMNAS_DE_LA_HOJA = ("Fecha", "Código", "Descripción", "Monto", "Clase", "Estado")
 
 
-def contar(movimientos: list[Movimiento]) -> dict:
-    """Recibe los movimientos de un lado. Devuelve, para el total, lo cruzado y
-    lo sin cruzar: cuántas filas son y cuánto suman (en centavos).
+def validar_cruce_entre_tablas(banco: pandas.DataFrame, sistema: pandas.DataFrame) -> None:
+    """Suma en centavos las filas con Estado "Cruzado" de cada tabla.
+    Si los totales coinciden, valida las referencias de pareja en ambos sentidos.
+    Si falla un control, informa el error.
     """
-    grupos = {"Entrada": movimientos,
-              CRUZADO: [movimiento for movimiento in movimientos if movimiento.estado == CRUZADO],
-              SIN_CRUZAR: [movimiento for movimiento in movimientos if movimiento.estado == SIN_CRUZAR]}
-    return {nombre: (len(grupo), sum(movimiento.monto_centavos for movimiento in grupo))
-            for nombre, grupo in grupos.items()}
+    sumas = {lado: int(tabla.loc[tabla[ESTADO] == CRUZADO, MONTO].sum())
+             for lado, tabla in (("Banco", banco), ("Sistema", sistema))}
+    if sumas["Banco"] != sumas["Sistema"]:
+        raise ValueError(f"lo cruzado no suma lo mismo en el banco ({sumas['Banco'] / 100:.2f}) "
+                         f"y en el sistema ({sumas['Sistema'] / 100:.2f}).")
+    validar_referencias_de_pareja("Banco", banco, sistema, es_sistema=False)
+    validar_referencias_de_pareja("Sistema", sistema, banco, es_sistema=True)
 
 
-def controlar(banco: list[Movimiento], sistema: list[Movimiento]) -> dict:
-    """Recibe los dos lados ya cruzados y controla que no se perdió nada:
-    - en cada lado, cruzado + sin cruzar da la entrada, en filas y en suma;
-    - lo cruzado suma lo mismo en el banco y en el sistema;
-    - las parejas se apuntan entre sí: si la fila 41 del banco dice que cruzó
-      con la 512 del sistema, la 512 del sistema tiene que decir la 41.
-    Devuelve los conteos de cada lado. Si algo no cierra, frena.
+def validar_referencias_de_pareja(
+    lado: str, tabla_de_origen: pandas.DataFrame, tabla_de_destino: pandas.DataFrame,
+    es_sistema: bool,
+) -> None:
+    """Comprueba que cada fila cruzada apunte a una fila existente y cruzada.
+    La fila de destino debe apuntar de vuelta a la de origen. Las filas con
+    otros estados deben tener la referencia vacía. Si todo coincide, sigue
+    con la próxima fila.
     """
-    conteos = {"Banco": contar(banco), "Sistema": contar(sistema)}
-    for lado, conteo in conteos.items():
-        filas = conteo[CRUZADO][0] + conteo[SIN_CRUZAR][0]
-        suma = conteo[CRUZADO][1] + conteo[SIN_CRUZAR][1]
-        if (filas, suma) != conteo["Entrada"]:
-            raise ValueError(f"{lado}: cruzado + sin cruzar no da la entrada "
-                             f"({filas} filas contra {conteo['Entrada'][0]}).")
-    if conteos["Banco"][CRUZADO][1] != conteos["Sistema"][CRUZADO][1]:
-        raise ValueError("lo cruzado no suma lo mismo en el banco y en el sistema.")
-    for lado, propios, otros in (("Banco", banco, sistema), ("Sistema", sistema, banco)):
-        controlar_parejas(lado, propios, {movimiento.fila: movimiento for movimiento in otros})
-    return conteos
+    referencias = tabla_de_origen[COLUMNA_PAREJA[es_sistema]]
+    for posicion, (estado, pareja) in enumerate(zip(tabla_de_origen[ESTADO], referencias)):
+        fila = posicion + PRIMERA_FILA_DE_DATOS
+        # Una fila lleva pareja si y solo si está "Cruzado".
+        if (estado == CRUZADO) == pandas.isna(pareja):
+            raise ValueError(f"{lado} fila {fila}: el estado no coincide con su pareja.")
+        if pandas.isna(pareja):
+            continue
+        posicion_ajena = int(pareja) - PRIMERA_FILA_DE_DATOS
+        if not 0 <= posicion_ajena < len(tabla_de_destino):
+            raise ValueError(f"{lado} fila {fila}: apunta a la fila {int(pareja)}, "
+                             "que no existe en el otro lado.")
+        apuntada = tabla_de_destino[COLUMNA_PAREJA[not es_sistema]].iat[posicion_ajena]
+        if (tabla_de_destino[ESTADO].iat[posicion_ajena] != CRUZADO
+                or pandas.isna(apuntada) or int(apuntada) != fila):
+            raise ValueError(f"{lado} fila {fila}: dice que cruzó con la fila {int(pareja)} "
+                             "del otro lado, pero esa fila no la apunta de vuelta.")
 
 
-def controlar_parejas(lado: str, propios: list[Movimiento], otros_por_fila: dict) -> None:
-    """Recibe un lado, sus movimientos y los del otro lado (por número de fila).
-    Controla que cada fila cruzada apunte a filas cruzadas del otro lado que la
-    apunten de vuelta, y que las sin cruzar no apunten a ninguna. Si no, frena.
+def filas_de_la_hoja(tabla: pandas.DataFrame, es_sistema: bool):
+    """Recibe una tabla cruzada. Devuelve sus filas listas para la hoja:
+    el monto en pesos y la pareja como número, o la celda vacía si no cruzó.
     """
-    for movimiento in propios:
-        if (movimiento.estado == CRUZADO) != bool(movimiento.filas_cruzadas):
-            raise ValueError(f"{lado} fila {movimiento.fila}: el estado no coincide con sus filas cruzadas.")
-        for fila in movimiento.filas_cruzadas:
-            pareja = otros_por_fila.get(fila)
-            if pareja is None or pareja.estado != CRUZADO or movimiento.fila not in pareja.filas_cruzadas:
-                raise ValueError(f"{lado} fila {movimiento.fila}: dice que cruzó con la fila {fila} "
-                                 f"del otro lado, pero esa fila no la apunta de vuelta.")
-
-
-def mostrar_filas(filas: list[int]):
-    """Recibe las filas con las que cruzó un movimiento. Devuelve lo que va en la
-    celda: vacía si no cruzó, el número si es una, "41, 42, 43" si son varias.
-    """
-    if not filas:
-        return None
-    return filas[0] if len(filas) == 1 else ", ".join(str(fila) for fila in filas)
+    for fecha, codigo, descripcion, monto, clase, estado, pareja in zip(
+            tabla["Fecha"], tabla["Código"], tabla["Descripción"], tabla[MONTO],
+            tabla["Clase"], tabla[ESTADO], tabla[COLUMNA_PAREJA[es_sistema]]):
+        yield (fecha, codigo, descripcion, int(monto) / 100, clase, estado,
+               None if pandas.isna(pareja) else int(pareja))
 
 
 def escribir_hoja(libro: Workbook, titulo: str, encabezado, filas, formatos: dict, anchos) -> None:
@@ -88,20 +87,21 @@ def escribir_hoja(libro: Workbook, titulo: str, encabezado, filas, formatos: dic
     hoja.freeze_panes = "A2"  # el encabezado queda fijo al bajar
 
 
-def escribir_excel(banco: list[Movimiento], sistema: list[Movimiento], conteos: dict, ruta: Path) -> None:
-    """Recibe los dos lados cruzados, sus conteos y la ruta donde guardar.
-    Escribe el Excel con las hojas "Resumen", "Banco" y "Sistema".
+def escribir_excel(banco: pandas.DataFrame, sistema: pandas.DataFrame,
+                   resumenes: dict, ruta: Path) -> None:
+    """Recibe las dos tablas cruzadas, el resumen de cada lado (lo devuelve el
+    control) y la ruta donde guardar. Escribe el Excel con las hojas "Resumen",
+    "Banco" y "Sistema".
     """
     libro = Workbook()
     libro.remove(libro.active)  # se arranca sin la hoja vacía que trae por defecto
-    resumen = [(lado, nombre, filas, suma / 100)
-               for lado, conteo in conteos.items() for nombre, (filas, suma) in conteo.items()]
-    escribir_hoja(libro, "Resumen", ("Lado", "Qué", "Filas", "Suma"), resumen,
-                  {"D": "#,##0.00"}, (10, 12, 10, 20))
-    # En cada hoja, la columna de la pareja dice en qué fila del otro documento está.
-    for titulo, otro, movimientos in (("Banco", "Sistema", banco), ("Sistema", "Banco", sistema)):
-        filas = [(m.fecha, m.codigo, m.descripcion, m.monto_centavos / 100,
-                  m.estado, mostrar_filas(m.filas_cruzadas), m.criterio) for m in movimientos]
-        escribir_hoja(libro, titulo, COLUMNAS + (f"Fila en {otro}", "Criterio"), filas,
-                      {"A": "DD/MM/YYYY", "D": "#,##0.00"}, (12, 34, 50, 18, 12, 15, 10))
+    filas_resumen = [(lado, nombre, cantidad, suma / 100)
+                     for lado, resumen in resumenes.items()
+                     for nombre, (cantidad, suma) in resumen.items()]
+    escribir_hoja(libro, "Resumen", ("Lado", "Qué", "Filas", "Suma"), filas_resumen,
+                  {"D": "#,##0.00"}, (10, 16, 10, 20))
+    for titulo, es_sistema, tabla in (("Banco", False, banco), ("Sistema", True, sistema)):
+        escribir_hoja(libro, titulo, COLUMNAS_DE_LA_HOJA + (COLUMNA_PAREJA[es_sistema],),
+                      filas_de_la_hoja(tabla, es_sistema),
+                      {"A": "DD/MM/YYYY", "D": "#,##0.00"}, (12, 26, 44, 16, 15, 12, 15))
     libro.save(ruta)
