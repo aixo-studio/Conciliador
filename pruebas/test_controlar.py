@@ -1,106 +1,87 @@
-"""Prueba del control del final (paso 3): el resultado se compara contra la
-tabla tal como llegó, y si algo no cierra frena diciendo qué regla falló.
-Se rompen los resultados a propósito. Todo con datos inventados.
+"""Prueba del control del cruce (paso 3): con lo que devolvió el cruce se
+vuelve a armar lo que entró. Se rompen los resultados a propósito.
+Todo con datos inventados.
 """
 import pandas
 import pytest
 
-from motor.controlar import validar_y_resumir_tabla_cruzada
-from motor.recibir import crear_copia_con_estado
+from motor.controlar import validar_y_resumir_cruce
+from motor.cruce_exacto import COLUMNA_PAREJA, cruzar_exacto
 from pruebas.datos import tabla
 
-# Un extracto inventado: tres movimientos y dos gastos bancarios, mezclados.
-FILAS = [(1, "319", "TRANSFERENCIA", 25000000, "Movimiento"),
-         (1, "236", "IMPUESTO LEY", -1250, "Gasto bancario"),
-         (2, "005", "", -15000000, "Movimiento"),
-         (2, "015", "COMISION", -950, "Gasto bancario"),
-         (3, "319", "TRANSFERENCIA", 8000000, "Movimiento")]
+# Una cuenta inventada: cruza la transferencia; quedan un gasto, un movimiento
+# del banco y un movimiento del ERP.
+FILAS_BANCO = [(1, "319", "TRANSFERENCIA", 100, "Movimiento"),
+               (1, "236", "IMPUESTO", -50, "Gasto bancario"),
+               (2, "005", "", 700, "Movimiento")]
+FILAS_ERP = [(1, "Orden de pago", "PAGO", 100, "Movimiento"),
+             (3, "Recibo de Cobranzas", "", 900, "Movimiento")]
 
 
-def ya_cruzado():
-    """Devuelve la tabla recibida y su resultado como lo dejaría el cruce:
-    la primera fila "Cruzado", los otros dos movimientos "Sin cruzar".
-    """
-    recibida = tabla(FILAS)
-    resultado = crear_copia_con_estado(recibida)
-    resultado.loc[0, "Estado"] = "Cruzado"
-    return recibida, resultado
+def cuenta():
+    """Devuelve las dos tablas que entran y las tres que devolvió el cruce."""
+    tabla_banco, tabla_erp = tabla(FILAS_BANCO), tabla(FILAS_ERP)
+    return (tabla_banco, tabla_erp) + cruzar_exacto(tabla_banco, tabla_erp)
 
 
-def test_un_resultado_correcto_pasa_y_devuelve_el_resumen():
-    recibida, resultado = ya_cruzado()
-    assert validar_y_resumir_tabla_cruzada(resultado, recibida) == {
-        "Entrada": (5, 25000000 - 1250 - 15000000 - 950 + 8000000),
-        "Cruzado": (1, 25000000),
-        "Sin cruzar": (2, -15000000 + 8000000),
-        "Gasto bancario": (2, -1250 - 950)}
+def validar(tabla_banco, tabla_erp, cruces, banco, erp):
+    """Llama al control con las tablas en el orden que espera."""
+    return validar_y_resumir_cruce(cruces, banco, erp, tabla_banco, tabla_erp)
 
 
-def test_cruzado_mas_sin_cruzar_mas_gasto_bancario_da_la_entrada():
-    recibida, resultado = ya_cruzado()
-    resumen = validar_y_resumir_tabla_cruzada(resultado, recibida)
-    partes = [resumen["Cruzado"], resumen["Sin cruzar"], resumen["Gasto bancario"]]
-    assert (sum(filas for filas, _ in partes), sum(suma for _, suma in partes)) == resumen["Entrada"]
+def test_un_cruce_correcto_pasa_y_devuelve_el_resumen():
+    tabla_banco, tabla_erp, cruces, banco, erp = cuenta()
+    resumen = validar(tabla_banco, tabla_erp, cruces, banco, erp)
+    assert resumen["Banco"] == {"Entrada": (3, 750), "Cruzado": (1, 100),
+                                "Pendiente": (2, 650), "Gasto bancario": (1, -50)}
+    assert resumen["ERP"] == {"Entrada": (2, 1000), "Cruzado": (1, 100), "Pendiente": (1, 900)}
 
 
-def test_frena_si_se_pierde_una_fila():
-    recibida, resultado = ya_cruzado()
-    with pytest.raises(ValueError, match="llegaron 5 y quedaron 4"):
-        validar_y_resumir_tabla_cruzada(resultado.iloc[:-1], recibida)
+def test_cruzado_mas_pendiente_da_lo_que_entro():
+    tabla_banco, tabla_erp, cruces, banco, erp = cuenta()
+    resumen = validar(tabla_banco, tabla_erp, cruces, banco, erp)
+    for lado in ("Banco", "ERP"):
+        filas = resumen[lado]["Cruzado"][0] + resumen[lado]["Pendiente"][0]
+        suma = resumen[lado]["Cruzado"][1] + resumen[lado]["Pendiente"][1]
+        assert (filas, suma) == resumen[lado]["Entrada"]
 
 
-def test_frena_si_se_duplica_una_fila():
-    recibida, resultado = ya_cruzado()
-    with pytest.raises(ValueError, match="llegaron 5 y quedaron 6"):
-        validar_y_resumir_tabla_cruzada(pandas.concat([resultado, resultado.iloc[[0]]]), recibida)
+def test_frena_si_falta_una_fila_del_banco():
+    tabla_banco, tabla_erp, cruces, banco, erp = cuenta()
+    with pytest.raises(ValueError, match="el banco pendiente no es lo que entró"):
+        validar(tabla_banco, tabla_erp, cruces, banco.iloc[:-1], erp)
 
 
 def test_frena_si_cambia_un_monto():
-    recibida, resultado = ya_cruzado()
-    resultado.loc[2, "Monto en centavos"] += 1
-    with pytest.raises(ValueError, match="la suma no cierra"):
-        validar_y_resumir_tabla_cruzada(resultado, recibida)
+    tabla_banco, tabla_erp, cruces, banco, erp = cuenta()
+    cruces.loc[0, "Monto en centavos"] = 101
+    with pytest.raises(ValueError, match="no son las que entraron del banco"):
+        validar(tabla_banco, tabla_erp, cruces, banco, erp)
 
 
-def test_frena_si_dos_montos_cambian_y_se_compensan():
-    # La cantidad de filas y la suma siguen dando bien: lo atrapa la comparación fila por fila.
-    recibida, resultado = ya_cruzado()
-    resultado.loc[0, "Monto en centavos"] += 1
-    resultado.loc[2, "Monto en centavos"] -= 1
-    with pytest.raises(ValueError, match="la fila 1 no es la que llegó"):
-        validar_y_resumir_tabla_cruzada(resultado, recibida)
+def test_frena_si_el_erp_pendiente_trae_filas_que_ya_cruzaron():
+    tabla_banco, tabla_erp, cruces, banco, erp = cuenta()
+    with pytest.raises(ValueError, match="el ERP pendiente no es lo que entró"):
+        validar(tabla_banco, tabla_erp, cruces, banco, tabla_erp)
 
 
-def test_frena_si_las_filas_quedan_en_otro_orden():
-    recibida, resultado = ya_cruzado()
-    desordenado = resultado.iloc[[1, 0, 2, 3, 4]]
-    with pytest.raises(ValueError, match="la fila 1 no es la que llegó"):
-        validar_y_resumir_tabla_cruzada(desordenado, recibida)
+def test_frena_si_un_gasto_bancario_cruzo():
+    tabla_banco, tabla_erp, cruces, banco, erp = cuenta()
+    # Se mete a la fuerza el gasto (fila 1 del banco) en la tabla de cruces.
+    forzada = pandas.concat([cruces, tabla_banco.loc[[1]].assign(**{COLUMNA_PAREJA: 1})])
+    with pytest.raises(ValueError, match="es un gasto bancario y cruzó"):
+        validar(tabla_banco, tabla_erp, forzada, banco.drop(1), erp.drop(1))
 
 
-def test_frena_si_cambia_la_clase_de_una_fila():
-    recibida, resultado = ya_cruzado()
-    resultado.loc[1, "Clase"] = "Movimiento"
-    with pytest.raises(ValueError, match="la fila 2 no es la que llegó"):
-        validar_y_resumir_tabla_cruzada(resultado, recibida)
+def test_frena_si_una_fila_del_erp_cruzo_con_dos_del_banco():
+    tabla_banco, tabla_erp, cruces, banco, erp = cuenta()
+    otra = tabla_banco.loc[[2]].assign(**{COLUMNA_PAREJA: 0})
+    with pytest.raises(ValueError, match="cruzó con más de una del banco"):
+        validar(tabla_banco, tabla_erp, pandas.concat([cruces, otra]), banco.drop(2), erp)
 
 
-def test_frena_si_una_fila_queda_con_un_estado_que_no_existe():
-    recibida, resultado = ya_cruzado()
-    resultado.loc[2, "Estado"] = "Otro"
-    with pytest.raises(ValueError, match="fila 3: el Estado no es válido"):
-        validar_y_resumir_tabla_cruzada(resultado, recibida)
-
-
-def test_frena_si_un_gasto_bancario_queda_cruzado():
-    recibida, resultado = ya_cruzado()
-    resultado.loc[1, "Estado"] = "Cruzado"
-    with pytest.raises(ValueError, match='fila 2: es un gasto bancario y quedó "Cruzado"'):
-        validar_y_resumir_tabla_cruzada(resultado, recibida)
-
-
-def test_frena_si_un_movimiento_queda_como_gasto_bancario():
-    recibida, resultado = ya_cruzado()
-    resultado.loc[2, "Estado"] = "Gasto bancario"
-    with pytest.raises(ValueError, match='fila 3: es un movimiento y quedó "Gasto bancario"'):
-        validar_y_resumir_tabla_cruzada(resultado, recibida)
+def test_frena_si_apunta_a_una_fila_que_no_existe_en_el_erp():
+    tabla_banco, tabla_erp, cruces, banco, erp = cuenta()
+    cruces.loc[0, COLUMNA_PAREJA] = 9
+    with pytest.raises(ValueError, match="filas que no existen en el ERP"):
+        validar(tabla_banco, tabla_erp, cruces, banco, erp)

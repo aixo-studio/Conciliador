@@ -1,68 +1,86 @@
-"""Prueba del cruce exacto sobre las tablas (paso 2): solo cruzan las filas
-"Sin cruzar", los repetidos se emparejan en orden y cada pareja se anota con
-la fila de la otra hoja del Excel de salida. Todo con datos inventados.
+"""Prueba del cruce exacto (paso 2): qué cruza, qué queda pendiente de cada
+lado y con qué fila del ERP cruzó cada una. Todo con datos inventados.
 """
-from motor.cruce_exacto import cruzar_exacto
-from motor.recibir import crear_copia_con_estado
+from motor.cruce_exacto import COLUMNA_PAREJA, cruzar_exacto
+from motor.recibir import COLUMNAS
 from pruebas.datos import tabla
 
 
-def lados(filas_banco, filas_sistema):
-    """Devuelve las dos tablas listas para cruzar (recibidas y con su Estado)."""
-    banco = crear_copia_con_estado(tabla(filas_banco))
-    sistema = crear_copia_con_estado(tabla(filas_sistema))
-    return banco, sistema
-
-
 def test_cruza_misma_fecha_y_mismo_monto():
-    banco, sistema = lados([(1, "319", "", 100, "Movimiento")],
-                           [(1, "Orden de pago", "", 100, "Movimiento")])
-    assert cruzar_exacto(banco, sistema) == 1
-    assert list(banco["Estado"]) == ["Cruzado"] and list(sistema["Estado"]) == ["Cruzado"]
-    # Cada una apunta a la fila de la otra en el Excel: los datos empiezan en la fila 2.
-    assert banco.loc[0, "Fila en Sistema"] == 2 and sistema.loc[0, "Fila en Banco"] == 2
+    cruces, banco, erp = cruzar_exacto(tabla([(1, "319", "", 100, "Movimiento")]),
+                                       tabla([(1, "Orden de pago", "", 100, "Movimiento")]))
+    assert list(cruces.columns) == COLUMNAS + [COLUMNA_PAREJA]
+    # Cruzó la única fila del banco con la fila 0 del ERP, y no quedó nada.
+    assert list(cruces.index) == [0] and list(cruces[COLUMNA_PAREJA]) == [0]
+    assert banco.empty and erp.empty
 
 
 def test_no_cruza_si_cambia_la_fecha_o_el_monto():
-    banco, sistema = lados([(1, "319", "", 100, "Movimiento"), (2, "319", "", 200, "Movimiento")],
-                           [(2, "OP", "", 100, "Movimiento"), (1, "OP", "", 200, "Movimiento")])
-    assert cruzar_exacto(banco, sistema) == 0
-    assert set(banco["Estado"]) == {"Sin cruzar"} and set(sistema["Estado"]) == {"Sin cruzar"}
-    assert banco["Fila en Sistema"].isna().all() and sistema["Fila en Banco"].isna().all()
+    cruces, banco, erp = cruzar_exacto(
+        tabla([(1, "319", "", 100, "Movimiento"), (2, "319", "", 200, "Movimiento")]),
+        tabla([(2, "OP", "", 100, "Movimiento"), (1, "OP", "", 200, "Movimiento")]))
+    assert cruces.empty and len(banco) == 2 and len(erp) == 2
 
 
 def test_los_repetidos_se_emparejan_en_orden():
     repetido = (2, "005", "", 700, "Movimiento")
-    banco, sistema = lados([repetido] * 3, [repetido] * 2)
-    assert cruzar_exacto(banco, sistema) == 2
-    assert list(banco["Estado"]) == ["Cruzado", "Cruzado", "Sin cruzar"]
-    assert list(banco["Fila en Sistema"].fillna(0)) == [2, 3, 0]
-    assert list(sistema["Fila en Banco"].fillna(0)) == [2, 3]
+    cruces, banco, erp = cruzar_exacto(tabla([repetido] * 3), tabla([repetido] * 2))
+    # El 1.º con el 1.º y el 2.º con el 2.º; el 3.º del banco queda pendiente.
+    assert list(cruces.index) == [0, 1] and list(cruces[COLUMNA_PAREJA]) == [0, 1]
+    assert list(banco.index) == [2] and erp.empty
 
 
 def test_un_gasto_bancario_no_cruza_aunque_tenga_pareja_perfecta():
-    banco, sistema = lados([(1, "236", "IMPUESTO", -50, "Gasto bancario")],
-                           [(1, "OP", "", -50, "Movimiento")])
-    assert cruzar_exacto(banco, sistema) == 0
-    assert list(banco["Estado"]) == ["Gasto bancario"] and banco["Fila en Sistema"].isna().all()
-    # Su "pareja" del sistema queda sin cruzar, para que la mire una persona.
-    assert list(sistema["Estado"]) == ["Sin cruzar"]
+    cruces, banco, erp = cruzar_exacto(tabla([(1, "236", "IMPUESTO", -50, "Gasto bancario")]),
+                                       tabla([(1, "OP", "", -50, "Movimiento")]))
+    assert cruces.empty
+    # El gasto queda pendiente en el banco, y su pareja perfecta, en el ERP.
+    assert len(banco) == 1 and len(erp) == 1
 
 
-def test_una_fila_cruzada_no_vuelve_a_cruzar():
-    banco, sistema = lados([(1, "319", "", 100, "Movimiento")],
-                           [(1, "OP", "", 100, "Movimiento"), (1, "OP", "", 100, "Movimiento")])
-    assert cruzar_exacto(banco, sistema) == 1
-    # Una segunda corrida no cruza nada más ni pisa las parejas ya anotadas.
-    assert cruzar_exacto(banco, sistema) == 0
-    assert banco.loc[0, "Fila en Sistema"] == 2
-    assert list(sistema["Estado"]) == ["Cruzado", "Sin cruzar"]
+def test_los_gastos_siempre_quedan_en_el_banco_pendiente():
+    cruces, banco, erp = cruzar_exacto(
+        tabla([(1, "319", "", 100, "Movimiento"), (1, "236", "", -50, "Gasto bancario"),
+               (2, "015", "", -950, "Gasto bancario")]),
+        tabla([(1, "OP", "", 100, "Movimiento")]))
+    assert list(cruces.index) == [0]
+    assert list(banco.index) == [1, 2] and list(banco["Clase"]) == ["Gasto bancario"] * 2
 
 
-def test_el_numero_de_pareja_cuenta_las_filas_del_excel():
-    banco, sistema = lados([(1, "a", "", 1, "Movimiento"), (1, "b", "", 2, "Movimiento"),
-                            (1, "c", "", 300, "Movimiento")],
-                           [(1, "OP", "", 300, "Movimiento")])
-    assert cruzar_exacto(banco, sistema) == 1
-    # La tercera fila del banco es la fila 4 del Excel (el encabezado es la 1).
-    assert sistema.loc[0, "Fila en Banco"] == 4 and banco.loc[2, "Fila en Sistema"] == 2
+def test_las_tablas_que_entran_no_se_modifican():
+    filas_banco = [(1, "319", "", 100, "Movimiento")]
+    filas_erp = [(1, "OP", "", 100, "Movimiento")]
+    tabla_banco, tabla_erp = tabla(filas_banco), tabla(filas_erp)
+    cruces, banco, erp = cruzar_exacto(tabla_banco, tabla_erp)
+    # Tocar lo que salió del cruce no toca lo que entró: las dos siguen siendo
+    # el testigo contra el que compara el control del final.
+    cruces.loc[0, "Monto en centavos"] = 1
+    assert tabla_banco.equals(tabla(filas_banco)) and tabla_erp.equals(tabla(filas_erp))
+
+
+def test_no_se_pierde_ninguna_fila():
+    filas_banco = [(1, "319", "", 100, "Movimiento"), (1, "236", "", -50, "Gasto bancario"),
+                   (2, "005", "", 700, "Movimiento")]
+    filas_erp = [(1, "OP", "", 100, "Movimiento"), (3, "RC", "", 900, "Movimiento")]
+    cruces, banco, erp = cruzar_exacto(tabla(filas_banco), tabla(filas_erp))
+    assert len(cruces) + len(banco) == len(filas_banco)
+    assert len(cruces) + len(erp) == len(filas_erp)
+
+
+def test_si_no_cruza_nada_la_tabla_de_cruces_sale_vacia_pero_con_sus_columnas():
+    cruces, banco, erp = cruzar_exacto(tabla([(1, "319", "", 100, "Movimiento")]),
+                                       tabla([(2, "OP", "", 300, "Movimiento")]))
+    assert cruces.empty and list(cruces.columns) == COLUMNAS + [COLUMNA_PAREJA]
+    # El tipo de la columna no depende de que haya cruzado algo.
+    assert str(cruces[COLUMNA_PAREJA].dtype) == "int64"
+
+
+def test_con_los_mismos_datos_siempre_da_el_mismo_resultado():
+    filas_banco = [(1, "319", "", 100, "Movimiento"), (1, "236", "", -50, "Gasto bancario"),
+                   (2, "005", "", 700, "Movimiento"), (2, "005", "", 700, "Movimiento")]
+    filas_erp = [(2, "OP", "", 700, "Movimiento"), (1, "OP", "", 100, "Movimiento"),
+                 (2, "OP", "", 700, "Movimiento")]
+    primera = cruzar_exacto(tabla(filas_banco), tabla(filas_erp))
+    segunda = cruzar_exacto(tabla(filas_banco), tabla(filas_erp))
+    for una, otra in zip(primera, segunda):
+        assert una.equals(otra)

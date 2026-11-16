@@ -1,8 +1,10 @@
-"""Valida los DataFrames de entrada y prepara las copias para el cruce.
+"""Paso 1 del proceso: validar las dos tablas que llegan de la etapa 1.
 
-La tabla original tiene cinco columnas y sirve de referencia para el control
-final. La copia de trabajo conserva esas columnas y agrega Estado como sexta.
-Quien llama indica con es_sistema si la tabla es del libro del sistema.
+Mira cada tabla y no devuelve nada: o la deja pasar, o frena diciendo qué fila
+y por qué. No la modifica ni la copia: las tablas que entran quedan intactas y
+sirven de referencia para el control del final.
+
+Quien llama indica con es_sistema si la tabla es la del libro del sistema.
 """
 from datetime import datetime
 
@@ -11,16 +13,9 @@ import pandas
 # Lo que este repo espera recibir de la etapa 1. Está escrito acá, y no se toma
 # de v3, a propósito: si v3 cambiara algo por error, este control lo frena.
 COLUMNAS = ["Fecha", "Código", "Descripción", "Monto en centavos", "Clase"]
+MONTO = "Monto en centavos"
 CLASE_MOVIMIENTO = "Movimiento"
 CLASE_GASTO_BANCARIO = "Gasto bancario"
-
-# La columna que agrega este repo y sus tres estados posibles: con qué arranca
-# cada Clase, y "Cruzado", que lo pone el cruce cuando encuentra la pareja.
-ESTADO = "Estado"
-SIN_CRUZAR = "Sin cruzar"
-CRUZADO = "Cruzado"
-GASTO_BANCARIO = "Gasto bancario"
-ESTADO_INICIAL = {CLASE_MOVIMIENTO: SIN_CRUZAR, CLASE_GASTO_BANCARIO: GASTO_BANCARIO}
 
 # Cuántos errores de fila se muestran en el mensaje; del resto se dice solo cuántos son.
 ERRORES_A_MOSTRAR = 20
@@ -63,7 +58,7 @@ def detectar_error_de_fila(fila: tuple, es_sistema: bool) -> str | None:
     # Para Python, verdadero/falso también es un entero; se descarta aparte.
     if isinstance(monto, bool) or not isinstance(monto, int):
         return f"el Monto en centavos no es un entero ({monto!r})."
-    if clase not in ESTADO_INICIAL:
+    if clase not in (CLASE_MOVIMIENTO, CLASE_GASTO_BANCARIO):
         return (f'la Clase tiene que ser "{CLASE_MOVIMIENTO}" o "{CLASE_GASTO_BANCARIO}" '
                 f"({clase!r}).")
     if es_sistema and clase == CLASE_GASTO_BANCARIO:
@@ -80,13 +75,3 @@ def formatear_errores_de_filas(errores: list[str]) -> str:
     if len(errores) > ERRORES_A_MOSTRAR:
         lineas.append(f"  … y {len(errores) - ERRORES_A_MOSTRAR} más.")
     return "\n".join(lineas)
-
-
-def crear_copia_con_estado(tabla: pandas.DataFrame) -> pandas.DataFrame:
-    """Recibe la tabla de un documento, ya controlada.
-    Devuelve una copia con la columna Estado: "Sin cruzar" para los movimientos
-    y "Gasto bancario" para los gastos bancarios. La tabla recibida no cambia.
-    """
-    tabla_de_trabajo = tabla.copy()
-    tabla_de_trabajo[ESTADO] = tabla_de_trabajo["Clase"].map(ESTADO_INICIAL)
-    return tabla_de_trabajo
