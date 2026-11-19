@@ -1,0 +1,12 @@
+# Los archivos de clientes nunca se suben al repo.
+*.xls
+*.xlsx
+*.csv
+
+# Archivos que genera Python.
+__pycache__/
+.pytest_cache/
+.venv/
+
+# Archivos que deja la Mac.
+.DS_Store
