@@ -10,9 +10,9 @@ del cruce; hasta entonces, el resultado son las tres tablas (ver PENDIENTES.md).
 """
 import pandas
 
-from motor.controlar import validar_y_resumir_cruce
-from motor.cruce_exacto import cruzar_exacto
-from motor.recibir import validar_tabla_de_entrada
+from conciliador.motor.controlar import validar_y_resumir_cruce
+from conciliador.motor.cruce_exacto import cruzar_exacto
+from conciliador.motor.recibir import validar_tabla_de_entrada
 
 
 def cruzar_cuenta(tabla_banco: pandas.DataFrame, tabla_erp: pandas.DataFrame) -> tuple:

@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pandas
 
-from motor.recibir import COLUMNAS
+from conciliador.motor.recibir import COLUMNAS
 
 
 def dia(numero):

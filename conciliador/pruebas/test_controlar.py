@@ -5,9 +5,9 @@ Todo con datos inventados.
 import pandas
 import pytest
 
-from motor.controlar import validar_y_resumir_cruce
-from motor.cruce_exacto import COLUMNA_PAREJA, cruzar_exacto
-from pruebas.datos import tabla
+from conciliador.motor.controlar import validar_y_resumir_cruce
+from conciliador.motor.cruce_exacto import COLUMNA_PAREJA, cruzar_exacto
+from conciliador.pruebas.datos import tabla
 
 # Una cuenta inventada: cruza la transferencia; quedan un gasto, un movimiento
 # del banco y un movimiento del ERP.

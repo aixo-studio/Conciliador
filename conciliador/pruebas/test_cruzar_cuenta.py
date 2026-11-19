@@ -4,9 +4,9 @@ Todo con datos inventados.
 """
 import pytest
 
-from cruzar_cuenta import cruzar_cuenta
-from motor.cruce_exacto import COLUMNA_PAREJA
-from pruebas.datos import tabla
+from conciliador.cruzar_cuenta import cruzar_cuenta
+from conciliador.motor.cruce_exacto import COLUMNA_PAREJA
+from conciliador.pruebas.datos import tabla
 
 FILAS_BANCO = [(1, "319", "TRANSFERENCIA", 100, "Movimiento"),
                (1, "236", "IMPUESTO", -50, "Gasto bancario"),

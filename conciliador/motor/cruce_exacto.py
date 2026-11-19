@@ -17,7 +17,7 @@ from collections import defaultdict, deque
 
 import pandas
 
-from motor.recibir import CLASE_MOVIMIENTO, MONTO
+from conciliador.motor.recibir import CLASE_MOVIMIENTO, MONTO
 
 # La sexta columna de la tabla de cruces: el número de fila del ERP con el que
 # cruzó cada fila del banco. Es el número tal cual lo nombra la tabla que

@@ -17,7 +17,7 @@ python -m pip install -r requirements.txt
 `cruzar_cuenta()` recibe dos DataFrames ya preparados por la etapa de preconciliación: el del extracto del banco y el del libro del ERP.
 
 ```python
-from cruzar_cuenta import cruzar_cuenta
+from conciliador.cruzar_cuenta import cruzar_cuenta
 
 cruces, banco_pendiente, erp_pendiente, resumen = cruzar_cuenta(tabla_banco, tabla_erp)
 ```
@@ -44,6 +44,8 @@ Devuelve cuatro cosas:
 Las tablas conservan el orden y el número de fila con que llegaron. Las dos que entran no se modifican.
 
 ## Cómo funciona
+
+El código está en la carpeta `conciliador/`:
 
 1. **`motor/recibir.py`** valida que las dos tablas cumplan el contrato. No las modifica.
 2. **`motor/cruce_exacto.py`** empareja movimientos con la misma fecha y el mismo monto. Si hay repetidos, los empareja en orden de aparición. Los gastos bancarios quedan fuera del cruce. Trabaja sobre copias y devuelve las tres tablas.

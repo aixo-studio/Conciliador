@@ -4,8 +4,8 @@ llega de la etapa 1. Se rompen las tablas a propósito. Todo con datos inventado
 import pandas
 import pytest
 
-from motor.recibir import COLUMNAS, validar_tabla_de_entrada
-from pruebas.datos import tabla
+from conciliador.motor.recibir import COLUMNAS, validar_tabla_de_entrada
+from conciliador.pruebas.datos import tabla
 
 # Un extracto inventado: dos movimientos y dos gastos bancarios, mezclados.
 FILAS = [(1, "319", "TRANSFERENCIA", 25000000, "Movimiento"),

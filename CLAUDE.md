@@ -18,7 +18,7 @@ mes. Es la etapa 2 de la conciliación bancaria.
   filas "Movimiento" (los gastos bancarios no cruzan), controla que no se
   perdió nada y devuelve tres tablas (cruces, banco pendiente y ERP pendiente)
   y un resumen. No escribe ningún archivo. Todo lo encadena `cruzar_cuenta()`
-  (en `cruzar_cuenta.py`).
+  (en `conciliador/cruzar_cuenta.py`).
 - **Quién consigue las tablas:** llamar a v3 y la terminal son la comunicación
   entre los repos (APR-235). Hasta que exista, este repo no se corre de punta
   a punta: se verifica con `python -m pytest`.
@@ -170,6 +170,8 @@ Cambios:
 
 ## Orden del repositorio
 
+- El código del cruce vive en la carpeta `conciliador/`. Todas las rutas de
+  esta sección son dentro de ella.
 - `cruzar_cuenta.py` es la puerta de entrada: `cruzar_cuenta(tabla_banco,
   tabla_erp)` recibe las dos tablas de una cuenta, corre cada paso y devuelve
   los cruces, el banco pendiente, el ERP pendiente y el resumen. Es lo que
