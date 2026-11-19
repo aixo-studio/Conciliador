@@ -4,10 +4,10 @@ from datetime import date, datetime
 import openpyxl
 import pytest
 
-from motor.armar import armar_movimientos
-from motor.configuracion import buscar_reglas, columnas_que_se_usan
-from motor.controlar import controlar
-from motor.leer import encontrar_tabla, leer_filas
+from preconciliacion.motor.armar import armar_movimientos
+from preconciliacion.motor.configuracion import buscar_reglas, columnas_que_se_usan
+from preconciliacion.motor.controlar import controlar
+from preconciliacion.motor.leer import encontrar_tabla, leer_filas
 
 # Las reglas del ERP son las mismas para cualquier banco.
 reglas = buscar_reglas("BBVA", es_erp=True)

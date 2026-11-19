@@ -4,8 +4,8 @@ sale todo como "Movimiento". Todo con datos inventados.
 """
 from datetime import date, datetime
 
-from motor.armar import Movimiento
-from motor.devolver import COLUMNAS, armar_dataframe
+from preconciliacion.motor.armar import Movimiento
+from preconciliacion.motor.devolver import COLUMNAS, armar_dataframe
 
 
 def movimiento(codigo, centavos):

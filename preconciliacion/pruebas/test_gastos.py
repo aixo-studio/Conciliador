@@ -4,7 +4,7 @@ exacto. Las listas de prueba son inventadas, salvo las del config real.
 """
 import pytest
 
-from motor.configuracion import buscar_reglas, controlar_gastos, es_gasto
+from preconciliacion.motor.configuracion import buscar_reglas, controlar_gastos, es_gasto
 
 
 @pytest.mark.parametrize("banco", ["BBVA", "Galicia", "Supervielle"])

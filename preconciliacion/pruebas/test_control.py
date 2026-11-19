@@ -6,9 +6,9 @@ from dataclasses import replace
 
 import pytest
 
-from motor.armar import armar_movimientos
-from motor.configuracion import buscar_reglas
-from motor.controlar import controlar
+from preconciliacion.motor.armar import armar_movimientos
+from preconciliacion.motor.configuracion import buscar_reglas
+from preconciliacion.motor.controlar import controlar
 
 ENCABEZADO_BBVA = ["Fecha", "Fecha Valor", "Concepto", "Codigo", "Número Documento",
                    "Oficina", "Crédito", "Débito", "Detalle"]

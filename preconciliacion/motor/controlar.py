@@ -1,5 +1,5 @@
 """Paso 4 del proceso: controlar que no se perdió nada."""
-from motor.armar import Movimiento, a_centavos, es_ignorada, esta_vacia
+from preconciliacion.motor.armar import Movimiento, a_centavos, es_ignorada, esta_vacia
 
 
 def controlar(movimientos: list[Movimiento], columnas: dict, datos: list, reglas: dict) -> dict:

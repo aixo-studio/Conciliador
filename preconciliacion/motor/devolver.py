@@ -8,8 +8,8 @@ todas sus filas son "Movimiento".
 """
 import pandas
 
-from motor.armar import Movimiento
-from motor.configuracion import es_gasto
+from preconciliacion.motor.armar import Movimiento
+from preconciliacion.motor.configuracion import es_gasto
 
 COLUMNAS = ["Fecha", "Código", "Descripción", "Monto en centavos", "Clase"]
 CLASE_MOVIMIENTO = "Movimiento"

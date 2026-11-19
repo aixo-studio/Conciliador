@@ -6,8 +6,8 @@ from datetime import datetime
 import openpyxl
 import pytest
 
-from convertir import convertir_documento
-from motor.devolver import COLUMNAS
+from preconciliacion.convertir import convertir_documento
+from preconciliacion.motor.devolver import COLUMNAS
 
 ENCABEZADO_BBVA = ["Fecha", "Fecha Valor", "Concepto", "Codigo", "Número Documento",
                    "Oficina", "Crédito", "Débito", "Detalle"]

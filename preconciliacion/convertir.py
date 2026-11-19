@@ -4,9 +4,9 @@ Lo llama Conciliador, una vez por archivo, con convertir_documento(): le dice
 qué banco es y si es el libro del ERP, y recibe el DataFrame
 (Fecha · Código · Descripción · Monto en centavos · Clase). No guarda ni borra nada.
 
-Desde la terminal sirve para probar un archivo y ver el resumen:
-    python convertir.py BBVA "extracto.xls"           el extracto del BBVA
-    python convertir.py BBVA "libro.xlsx" --erp       el libro del ERP de la cuenta BBVA
+Desde la terminal, en la raíz del repo, sirve para probar un archivo y ver el resumen:
+    python -m preconciliacion.convertir BBVA "extracto.xls"        el extracto del BBVA
+    python -m preconciliacion.convertir BBVA "libro.xlsx" --erp    el libro del ERP de la cuenta BBVA
 
 Las reglas de cada banco y del ERP están en configuracion.toml.
 """
@@ -15,11 +15,11 @@ from pathlib import Path
 
 import pandas
 
-from motor.armar import armar_movimientos
-from motor.configuracion import buscar_reglas, columnas_que_se_usan
-from motor.controlar import controlar
-from motor.devolver import CLASE_GASTO_BANCARIO, armar_dataframe
-from motor.leer import encontrar_tabla, leer_filas
+from preconciliacion.motor.armar import armar_movimientos
+from preconciliacion.motor.configuracion import buscar_reglas, columnas_que_se_usan
+from preconciliacion.motor.controlar import controlar
+from preconciliacion.motor.devolver import CLASE_GASTO_BANCARIO, armar_dataframe
+from preconciliacion.motor.leer import encontrar_tabla, leer_filas
 
 
 def pesos(centavos: int) -> str:

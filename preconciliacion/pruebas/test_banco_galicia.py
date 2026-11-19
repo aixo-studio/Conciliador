@@ -3,11 +3,11 @@ from datetime import date, datetime
 
 import openpyxl
 
-from motor.armar import Movimiento, armar_movimientos
-from motor.configuracion import buscar_reglas, columnas_que_se_usan
-from motor.controlar import controlar
-from motor.devolver import armar_dataframe
-from motor.leer import encontrar_tabla, leer_filas
+from preconciliacion.motor.armar import Movimiento, armar_movimientos
+from preconciliacion.motor.configuracion import buscar_reglas, columnas_que_se_usan
+from preconciliacion.motor.controlar import controlar
+from preconciliacion.motor.devolver import armar_dataframe
+from preconciliacion.motor.leer import encontrar_tabla, leer_filas
 
 reglas = buscar_reglas("Galicia", es_erp=False)
 
