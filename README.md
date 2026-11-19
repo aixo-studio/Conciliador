@@ -42,6 +42,12 @@ Todos los comandos se corren desde la raíz del repo.
 python conciliar.py BBVA "ruta/extracto.xls" "ruta/libro.xlsx"
 ```
 
+**Guardar el resultado para revisarlo.** Con `--csv`, además escribe en esa carpeta `cruces.csv`, `banco_pendiente.csv`, `erp_pendiente.csv` y `resumen.csv`, que se abren directo en Excel. Si la carpeta ya los tenía, los reemplaza:
+
+```bash
+python conciliar.py BBVA "ruta/extracto.xls" "ruta/libro.xlsx" --csv "ruta/carpeta"
+```
+
 **Probar un documento solo** (etapa 1). Muestra su resumen y no guarda nada:
 
 ```bash
@@ -82,7 +88,7 @@ python -m pytest
 
 ## Datos reales
 
-Los archivos de los clientes nunca se suben al repo: se guardan afuera y se le pasa al programa la ruta de cada uno. El programa nunca modifica un original y no escribe ningún archivo.
+Los archivos de los clientes nunca se suben al repo: se guardan afuera y se le pasa al programa la ruta de cada uno. El programa nunca modifica un original. Solo escribe archivos si se pide con `--csv`; como tienen datos del cliente, conviene guardarlos fuera del repo (igual, git ignora los `*.csv`).
 
 ## Decisiones
 
@@ -92,4 +98,6 @@ Las de cada etapa están en su README. Estas son las de todo el sistema.
 
 **2. La etapa 2 controla lo que recibe con su propia copia del contrato.** Aunque estén en el mismo repo, la etapa 2 no toma las columnas ni las clases de la etapa 1: las tiene escritas aparte. Así, si la etapa 1 cambia algo por error, la etapa 2 frena en vez de cruzar datos mal armados. Límite: si el contrato cambia a propósito, hay que cambiarlo en las dos etapas en el mismo commit.
 
-**3. Un solo archivo conoce a las dos etapas: `conciliar.py`, en la raíz** (2026-11-19). Llama a la etapa 1 una vez por archivo y le pasa las dos tablas a la etapa 2. Así ninguna etapa depende de la otra y cada una se sigue probando sola. Se descartó que la etapa 2 llamara directo a la etapa 1: rompería la frontera y sus pruebas necesitarían archivos Excel. Si algo falla, el error dice en qué parte. Tiene una función (`conciliar`) para otros programas y la terminal para usarlo a mano, como `convertir.py`. Límite: por ahora solo muestra el resumen; las tablas no se guardan en ningún archivo.
+**3. Un solo archivo conoce a las dos etapas: `conciliar.py`, en la raíz** (2026-11-19). Llama a la etapa 1 una vez por archivo y le pasa las dos tablas a la etapa 2. Así ninguna etapa depende de la otra y cada una se sigue probando sola. Se descartó que la etapa 2 llamara directo a la etapa 1: rompería la frontera y sus pruebas necesitarían archivos Excel. Si algo falla, el error dice en qué parte. Tiene una función (`conciliar`) para otros programas y la terminal para usarlo a mano, como `convertir.py`. Límite: el resultado solo se guarda si se pide (ver la decisión 4).
+
+**4. El resultado se guarda en CSV, y solo si se pide** (2026-11-19). Con `--csv`, `conciliar.py` escribe las tres tablas y el resumen en cuatro CSV, para revisarlos en Excel. Los escribe `conciliador/motor/salida.py` con lo que devuelve `cruzar_cuenta()`, ya controlado, y con todas las columnas que traiga cada tabla, así una pasada nueva del cruce no obliga a cambiarlo. Se eligió CSV y no un Excel con cuatro hojas porque es el formato más simple y cualquier programa lo lee. Se descartó que `cruzar_cuenta()` escribiera los archivos: la etapa 2 dejaría de poder probarse sin archivos. El monto va solo en centavos, como en el contrato. Límites: es una salida para revisar, no la entrega final al cliente; si la carpeta ya tenía esos CSV, los reemplaza.

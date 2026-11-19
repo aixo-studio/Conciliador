@@ -3,10 +3,11 @@
 Recibe el banco y los dos archivos de una cuenta: el extracto del banco y el
 libro del ERP. Pasa cada archivo por la etapa 1 (preconciliacion/), que lo
 devuelve limpio, y las dos tablas por la etapa 2 (conciliador/), que las cruza.
-No guarda ni borra nada.
+No borra nada. Solo escribe archivos si se pide --csv.
 
 Desde la terminal, en la raíz del repo:
-    python conciliar.py BBVA "extracto.xls" "libro.xlsx"
+    python conciliar.py BBVA "extracto.xls" "libro.xlsx"                     muestra el resumen
+    python conciliar.py BBVA "extracto.xls" "libro.xlsx" --csv "carpeta"     y guarda los 4 CSV
 """
 import sys
 from pathlib import Path
@@ -14,6 +15,7 @@ from pathlib import Path
 import pandas
 
 from conciliador.cruzar_cuenta import cruzar_cuenta
+from conciliador.motor.salida import escribir_csv
 from preconciliacion.convertir import convertir_documento, pesos
 
 
@@ -54,11 +56,20 @@ def mostrar_lado(nombre: str, resumen_del_lado: dict, fechas: pandas.Series) -> 
 
 
 def main() -> None:
-    """Recibe desde la terminal el banco, el extracto y el libro del ERP.
-    Concilia la cuenta y muestra el resumen de cada lado. No guarda nada.
+    """Recibe desde la terminal el banco, el extracto, el libro del ERP y, si se
+    quiere guardar el resultado, --csv y una carpeta. Concilia la cuenta, muestra
+    el resumen de cada lado y, con --csv, escribe los 4 CSV en esa carpeta.
     Si falla, termina con un error que dice en qué parte.
     """
     argumentos = sys.argv[1:]
+    # --csv va seguido de la carpeta; se separa del resto de los argumentos.
+    carpeta_csv = None
+    if "--csv" in argumentos:
+        posicion = argumentos.index("--csv")
+        if posicion + 1 >= len(argumentos):
+            sys.exit(__doc__)
+        carpeta_csv = argumentos[posicion + 1]
+        argumentos = argumentos[:posicion] + argumentos[posicion + 2:]
     if len(argumentos) != 3:
         sys.exit(__doc__)
     banco, ruta_extracto, ruta_libro = argumentos
@@ -73,6 +84,13 @@ def main() -> None:
     print(f"✓ {banco}: {miles(len(cruces))} cruces")
     mostrar_lado("Banco", resumen["Banco"], fechas_banco)
     mostrar_lado("ERP", resumen["ERP"], fechas_erp)
+    if carpeta_csv:
+        # Se escribe después del cruce y su control: lo que se guarda ya cerró.
+        try:
+            rutas = escribir_csv(cruces, banco_pendiente, erp_pendiente, resumen, carpeta_csv)
+        except OSError as error:
+            sys.exit(f"✗ {banco}: no se pudieron guardar los CSV. {error}")
+        print(f"  CSV guardados en {Path(carpeta_csv)}: {', '.join(ruta.name for ruta in rutas)}")
 
 
 if __name__ == "__main__":

@@ -1,11 +1,13 @@
 """Prueba del recorrido completo (conciliar.py): una cuenta inventada, del Excel
-crudo hasta las tablas del cruce, y que cada error diga en qué parte pasó.
+crudo hasta las tablas del cruce (y los CSV si se piden), y que cada error diga
+en qué parte pasó.
 """
 from datetime import datetime
 
 import openpyxl
 import pytest
 
+import conciliar as programa
 from conciliar import conciliar
 
 ENCABEZADO_SUPERVIELLE = ["Fecha", "Hora", "Concepto", "Detalle", "Débito", "Crédito", "Saldo"]
@@ -73,6 +75,28 @@ def test_acepta_las_rutas_como_texto(tmp_path):
     cruces, _, _, _ = conciliar("Supervielle", str(extracto), str(libro))
 
     assert len(cruces) == 1
+
+
+def test_la_terminal_con_csv_guarda_los_cuatro_archivos(tmp_path, monkeypatch, capsys):
+    extracto, libro = crear_cuenta(tmp_path)
+    carpeta = tmp_path / "resultado"
+    monkeypatch.setattr("sys.argv", ["conciliar.py", "Supervielle", str(extracto), str(libro),
+                                     "--csv", str(carpeta)])
+
+    programa.main()
+
+    assert sorted(ruta.name for ruta in carpeta.iterdir()) == [
+        "banco_pendiente.csv", "cruces.csv", "erp_pendiente.csv", "resumen.csv"]
+    assert "CSV guardados" in capsys.readouterr().out
+
+
+def test_la_terminal_sin_csv_no_escribe_nada(tmp_path, monkeypatch):
+    extracto, libro = crear_cuenta(tmp_path)
+    monkeypatch.setattr("sys.argv", ["conciliar.py", "Supervielle", str(extracto), str(libro)])
+
+    programa.main()
+
+    assert sorted(ruta.name for ruta in tmp_path.iterdir()) == ["extracto.xlsx", "libro.xlsx"]
 
 
 def test_si_falla_el_extracto_lo_dice(tmp_path):

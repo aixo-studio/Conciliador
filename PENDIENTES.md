@@ -4,15 +4,14 @@
 
 ### General
 
-1. **Unión de los repos (APR-235), lo que falta:** PR a main, archivar
-   Pre-procesamiento-bancario-, renombrar la carpeta local a "Conciliador" y
-   recrear el `.venv`. La carpeta "conciliacion v3" se guarda un tiempo como
-   respaldo.
+1. **Unión de los repos (APR-235), lo que falta:** que lo revise Luciano, PR
+   a main, archivar Pre-procesamiento-bancario-, renombrar la carpeta local a
+   "Conciliador" y recrear el `.venv`. La carpeta "conciliacion v3" se guarda
+   un tiempo como respaldo.
 2. **Archivos originales del cliente:** pedir septiembre tal como sale del
    banco y del sistema (sin abrir ni guardar en Excel), de los 3 bancos, y
    probarlos. Hoy se prueba con copias armadas por nosotros.
-3. **Salida en CSV** de las tres tablas del cruce. Después de la unión.
-4. **Dónde termina el sistema:** qué se entrega al final y a quién.
+3. **Dónde termina el sistema:** qué se entrega al final y a quién.
 
 ### Etapa 1 (preconciliación)
 
@@ -44,7 +43,9 @@
    lado, misma fecha, en las dos direcciones (septiembre: 5 grupos en BBVA, 2
    en Galicia, 0 en Supervielle). A decidir: qué pasa con más de un
    candidato, si cruzan directo o quedan "a revisar", y si trabaja sobre lo
-   pendiente del cruce exacto.
+   pendiente del cruce exacto. `controlar.py` y la columna "Fila en ERP" hoy
+   suponen una pareja por fila: tienen que admitir que una fila cruce con
+   varias.
 2. **Filas con fecha de otro mes:** qué se hace con ellas.
 3. **Recuperar las Decisiones del README**, que se perdieron el 2026-11-12;
    revisar cuáles siguen vigentes.
@@ -59,6 +60,9 @@
 
 ### General
 
+- 2026-11-19 — Salida en CSV: `conciliar.py … --csv carpeta` guarda cruces,
+  banco pendiente, ERP pendiente y resumen (`conciliador/motor/salida.py`).
+  Monto solo en centavos; reemplaza los CSV anteriores de esa carpeta.
 - 2026-11-19 — `conciliar.py`: concilia una cuenta de punta a punta (las dos
   etapas). Septiembre da igual a la referencia en los 3 bancos (BBVA 394
   cruces, Galicia 86, Supervielle 54).

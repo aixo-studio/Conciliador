@@ -130,16 +130,19 @@ una carpeta al lado:
       conciliacion resultados/v3/
         input/<AAAA-MM>/                        los crudos (pueden estar en otro lado)
 
-El programa nunca modifica un original y no escribe nada: la etapa 1 recibe la
-ruta de un archivo, el banco y si es el libro del ERP, y devuelve su tabla; la
-etapa 2 recibe las dos tablas de una cuenta y devuelve el resultado. Armar el
-par extracto + libro de cada cuenta es de quien llama. Si se escribe un
-archivo de salida, y dónde, se define más adelante (ver PENDIENTES.md).
+El programa nunca modifica un original: la etapa 1 recibe la ruta de un
+archivo, el banco y si es el libro del ERP, y devuelve su tabla; la etapa 2
+recibe las dos tablas de una cuenta y devuelve el resultado. Armar el par
+extracto + libro de cada cuenta es de quien llama. Solo se escriben archivos
+si se pide con `--csv`: los 4 CSV del resultado, en la carpeta indicada. Como
+tienen datos del cliente, van fuera del repo (por ejemplo, en
+`conciliacion resultados/`); el `.gitignore` igual ignora los `*.csv`.
 
-Cómo se prueba desde la terminal, en la raíz del repo (muestra el resumen, no
-guarda nada):
+Cómo se prueba desde la terminal, en la raíz del repo (sin `--csv`, muestra el
+resumen y no guarda nada):
 
     python conciliar.py BBVA "ruta/extracto.xls" "ruta/libro.xlsx"      la cuenta BBVA de punta a punta
+    python conciliar.py BBVA "ruta/extracto.xls" "ruta/libro.xlsx" --csv "ruta/carpeta"     y guarda los 4 CSV
     python -m preconciliacion.convertir BBVA "ruta/extracto.xls"         el extracto del BBVA
     python -m preconciliacion.convertir BBVA "ruta/libro.xlsx" --erp     el libro del ERP de la cuenta BBVA
 
@@ -249,6 +252,11 @@ Cambios:
   `cruce_exacto.py` (misma fecha y mismo monto, solo filas "Movimiento"; devuelve
   las tres tablas) y `controlar.py` (con lo que devolvió el cruce se vuelve a
   armar lo que entró: si no da igual, frena; si da, devuelve el resumen).
+- `motor/salida.py` escribe los 4 CSV (cruces, banco pendiente, ERP pendiente
+  y resumen) con lo que devuelve `cruzar_cuenta()`, ya controlado. No lo llama
+  `cruzar_cuenta()`: lo llama `conciliar.py`, solo con `--csv`. Escribe todas
+  las columnas que traiga cada tabla, así una pasada nueva del cruce no lo
+  obliga a cambiar.
 - La etapa 2 no tiene nada propio de un banco: qué es gasto bancario lo decide
   la etapa 1, y acá llega en la columna Clase.
 - `pruebas/` tiene una prueba por archivo de `motor/` y una de la corrida
@@ -307,7 +315,9 @@ Cambios:
   contra la entrada. Si no cierran, no se devuelve nada: frena con un error
   que dice por qué.
 - El archivo original y las tablas que recibe cada etapa nunca se modifican.
-- No se guarda ni se borra ningún archivo: el resultado son DataFrames.
+- No se borra ningún archivo. El resultado son DataFrames; solo se escriben
+  archivos si se pide con `--csv` (los 4 CSV del resultado, que reemplazan a
+  los de una corrida anterior en esa carpeta).
 - Los archivos reales de un cliente nunca se suben al repo (ni a GitHub). Las
   pruebas usan datos inventados. Ningún nombre de cliente en el código ni en
   la documentación.
