@@ -8,13 +8,12 @@ Lo que falta para correr de punta a punta, ahora que el cruce ya trabaja
 sobre las tablas:
 
 - Conseguir las dos tablas de una cuenta: llamar a `convertir_documento()` de
-  v3, una vez por archivo, y pasárselas a `cruzar_cuenta()` con la ruta de
-  salida.
-- La terminal: qué recibe, qué muestra y dónde escribe. La vieja (`cruzar.py`)
-  se borró junto con la entrada por Excel.
-- Al fallar una corrida, borrar el resultado anterior de esa cuenta (lo hacía
-  la terminal vieja; `cruzar_cuenta()` no escribe nada si algo falla, pero
-  tampoco borra lo que había de antes).
+  v3, una vez por archivo, y pasárselas a `cruzar_cuenta()`.
+- La terminal: qué recibe, qué muestra y si escribe algo. La vieja
+  (`cruzar.py`) se borró junto con la entrada por Excel.
+- La salida: `cruzar_cuenta()` hoy devuelve tablas y no escribe nada. Si se
+  escribe un archivo (CSV o Excel), definir dónde y qué pasa con el resultado
+  anterior de esa cuenta si una corrida falla.
 - Verificar septiembre 2026 contra la referencia fija del CLAUDE.md: hasta
   ahora todo está probado con tablas inventadas.
 
@@ -32,13 +31,14 @@ Alcance decidido: dos pasadas de cruce, una después de la otra.
 Decisiones a tomar:
 
 - **Gastos bancarios**: los reconoce v3, con la lista de cada banco. Llegan
-  con Clase "Gasto bancario" y quedan con Estado "Gasto bancario" desde el
-  principio; ninguna pasada los toma (decidido el 2026-11-10, APR-223).
+  con Clase "Gasto bancario", ninguna pasada los toma y quedan en el banco
+  pendiente (decidido el 2026-11-10, APR-223; desde el 2026-11-16 ya no hay
+  columna Estado).
 - **Más de un candidato** en la pasada de sumas: qué se hace (idea: no cruzar
   y anotar cuántos candidatos había).
 - **Sumas**: si cruzan directo o quedan "a revisar" para que alguien confirme.
-- **Pasada de sumas**: si lee el Excel del cruce exacto y completa solo lo
-  "Sin cruzar", o si se corre todo junto.
+- **Pasada de sumas**: si trabaja sobre las tablas pendientes que deja el
+  cruce exacto, o si se corre todo junto.
 - **Controles de mes**: qué hacer si una fila tiene fecha de otro mes.
 
 ### 3. Fuera del alcance actual (anotado para no perderlo)
@@ -71,6 +71,12 @@ cambiar el contrato.
 
 ## Hecho
 
+- 2026-11-16 — El cruce devuelve tres tablas (APR-214): `cruzar_cuenta()`
+  recibe las dos tablas, valida el contrato, hace el cruce exacto y devuelve
+  los cruces (con "Fila en ERP"), el banco pendiente (con los gastos
+  bancarios), el ERP pendiente y el resumen. Se sacan la columna Estado, el
+  Excel de salida y `motor/salida.py`: la salida se define cuando exista la
+  segunda pasada. Probado con tablas inventadas; septiembre, sin verificar.
 - 2026-11-11 — El cruce pasa al contrato del 2026-11-04 (APR-214):
   `cruzar_cuenta()` encadena recibir (chequeos y Estado), el cruce exacto solo
   sobre filas "Sin cruzar", el control contra la tabla recibida, los controles

@@ -1,6 +1,6 @@
 # Conciliador
 
-Cruza los movimientos de un extracto bancario con los del libro del sistema financiero para una cuenta. Genera un Excel con el resumen y el detalle de los movimientos cruzados, pendientes y clasificados como gastos bancarios.
+Cruza los movimientos de un extracto bancario con los del libro del sistema financiero (el ERP) para una cuenta. Devuelve tres tablas (los cruces, lo pendiente del banco y lo pendiente del ERP) y un resumen. Por ahora no escribe ningún archivo: la salida se define cuando exista la segunda pasada del cruce.
 
 ## Requisitos e instalación
 
@@ -14,12 +14,12 @@ python -m pip install -r requirements.txt
 
 ## Uso
 
-`cruzar_cuenta()` recibe dos DataFrames ya preparados por la etapa de preconciliación y la ruta donde guardar el Excel.
+`cruzar_cuenta()` recibe dos DataFrames ya preparados por la etapa de preconciliación: el del extracto del banco y el del libro del ERP.
 
 ```python
 from cruzar_cuenta import cruzar_cuenta
 
-resumen = cruzar_cuenta(tabla_banco, tabla_sistema, "resultados/conciliacion.xlsx")
+cruces, banco_pendiente, erp_pendiente, resumen = cruzar_cuenta(tabla_banco, tabla_erp)
 ```
 
 Ambas tablas deben tener al menos una fila y estas cinco columnas en orden:
@@ -32,14 +32,22 @@ Ambas tablas deben tener al menos una fila y estas cinco columnas en orden:
 | `Monto en centavos` | Entero con signo |
 | `Clase` | `Movimiento` o `Gasto bancario`. En el libro del sistema, solo `Movimiento`. |
 
-El Excel tiene tres hojas: `Resumen`, `Banco` y `Sistema`. Las hojas de detalle conservan el orden de entrada e indican el estado de cada movimiento y, cuando hay cruce, la fila de su pareja en la otra hoja.
+Devuelve cuatro cosas:
+
+| Qué | Qué tiene |
+|---|---|
+| `cruces` | Las filas del banco que cruzaron, con las cinco columnas y una sexta, `Fila en ERP`: el número de fila de su pareja en la tabla del ERP tal como llegó (la primera fila es la 0). |
+| `banco_pendiente` | Las filas del banco que no cruzaron, incluidos los gastos bancarios. |
+| `erp_pendiente` | Las filas del ERP que no cruzaron. |
+| `resumen` | Filas y suma en centavos de cada lado: lo que entró, lo cruzado y lo pendiente. En el banco, también los gastos bancarios. |
+
+Las tablas conservan el orden y el número de fila con que llegaron. Las dos que entran no se modifican.
 
 ## Cómo funciona
 
-1. **`motor/recibir.py`** valida las tablas y crea copias de trabajo con la columna `Estado`.
-2. **`motor/cruce_exacto.py`** empareja movimientos con la misma fecha y el mismo monto. Si hay repetidos, los empareja en orden de aparición. Los gastos bancarios quedan fuera del cruce.
-3. **`motor/controlar.py`** compara cada tabla cruzada con su original y resume las filas y los montos por estado.
-4. **`motor/salida.py`** comprueba que los totales cruzados coincidan y que las referencias entre parejas sean recíprocas. Después escribe el Excel.
+1. **`motor/recibir.py`** valida que las dos tablas cumplan el contrato. No las modifica.
+2. **`motor/cruce_exacto.py`** empareja movimientos con la misma fecha y el mismo monto. Si hay repetidos, los empareja en orden de aparición. Los gastos bancarios quedan fuera del cruce. Trabaja sobre copias y devuelve las tres tablas.
+3. **`motor/controlar.py`** vuelve a armar lo que entró con lo que salió del cruce. Si alguna fila se perdió, se duplicó o cambió, o si lo cruzado no suma lo mismo en el banco y en el ERP, frena. Si todo cierra, devuelve el resumen.
 
 Los importes se comparan y se suman en centavos enteros para mantener exactas las cuentas. Las tablas originales se conservan como referencia para verificar que el cruce respete todas las filas, sus datos y su orden.
 

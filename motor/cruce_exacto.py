@@ -1,70 +1,69 @@
 """Paso 2 del proceso: el cruce exacto.
 
-Trabaja sobre las dos tablas de una cuenta (la del banco y la del sistema), ya
-recibidas y con su columna Estado. Una fila del banco cruza con una del sistema
-si tienen la misma fecha y el mismo monto (en centavos). Si la misma fecha y el
-mismo monto se repiten de los dos lados, se emparejan en orden: el primero del
-banco con el primero del sistema, el segundo con el segundo, y así.
+Recibe las dos tablas de una cuenta tal como llegaron y trabaja sobre copias:
+las originales no se tocan y quedan de referencia para el control del final.
 
-Solo cruzan las filas "Sin cruzar": un gasto bancario nunca entra al cruce,
-aunque tenga una pareja perfecta. Lo que no encuentra pareja queda "Sin cruzar".
+Una fila del banco cruza con una del ERP si tienen la misma fecha y el mismo
+monto. Si la misma fecha y el mismo monto se repiten de los dos lados, se
+emparejan en orden: la primera del banco con la primera del ERP, la segunda
+con la segunda, y así.
+
+Solo se cruzan los movimientos: un gasto bancario no busca pareja ni puede ser
+la pareja de nadie, aunque coincida exacto.
+
+Devuelve tres tablas: la de los cruces y lo que quedó pendiente de cada lado.
 """
 from collections import defaultdict, deque
 
 import pandas
 
-from motor.recibir import CRUZADO, ESTADO, SIN_CRUZAR
+from motor.recibir import CLASE_MOVIMIENTO, MONTO
 
-# La columna de la pareja de cada tabla. El número es la fila de la OTRA hoja
-# del Excel de salida: el encabezado es la fila 1 y los datos empiezan en la 2,
-# así que quien busca ese número en el archivo cae en la fila justa.
-COLUMNA_PAREJA = {False: "Fila en Sistema", True: "Fila en Banco"}
-PRIMERA_FILA_DE_DATOS = 2
+# La sexta columna de la tabla de cruces: el número de fila del ERP con el que
+# cruzó cada fila del banco. Es el número tal cual lo nombra la tabla que
+# llegó, así que sirve para ir a buscarla sin ninguna cuenta en el medio.
+COLUMNA_PAREJA = "Fila en ERP"
 
 
-def preparar_columna_de_pareja(tabla: pandas.DataFrame, es_sistema: bool) -> None:
-    """Recibe una tabla y de qué lado es. Si todavía no tiene su columna de
-    pareja, se la agrega vacía: enteros que admiten celdas vacías ("Int64"),
-    porque una fila sin cruzar no lleva número. La completa el cruce.
+def cruzar_exacto(tabla_banco: pandas.DataFrame, tabla_erp: pandas.DataFrame
+                  ) -> tuple[pandas.DataFrame, pandas.DataFrame, pandas.DataFrame]:
+    """Recibe las dos tablas de una cuenta, con las cinco columnas del contrato.
+    Devuelve tres tablas, en este orden: los cruces (las filas del banco que
+    cruzaron, con el número de fila de su pareja en el ERP), el banco pendiente
+    (lo que no cruzó, más los gastos bancarios) y el ERP pendiente.
+    Las dos tablas que entran no se modifican.
     """
-    columna = COLUMNA_PAREJA[es_sistema]
-    if columna not in tabla.columns:
-        tabla[columna] = pandas.array([pandas.NA] * len(tabla), dtype="Int64")
+    banco = tabla_banco.copy()
+    erp = tabla_erp.copy()
+    parejas = buscar_parejas(banco, erp)
+    filas_del_banco = [del_banco for del_banco, _ in parejas]
+    filas_del_erp = [del_erp for _, del_erp in parejas]
+    cruces = banco.loc[filas_del_banco].copy()
+    # El tipo se fija siempre, aunque no haya cruzado nada: quien recibe la
+    # tabla encuentra la columna con números enteros, esté vacía o llena.
+    cruces[COLUMNA_PAREJA] = pandas.array(filas_del_erp, dtype="int64")
+    return cruces, banco.drop(filas_del_banco), erp.drop(filas_del_erp)
 
 
-def cruzar_exacto(banco: pandas.DataFrame, sistema: pandas.DataFrame) -> int:
-    """Modifica las dos tablas de trabajo que recibe.
-    Para cada pareja con la misma fecha y el mismo monto, cambia el Estado de
-    ambas filas a "Cruzado" y anota en cada una la fila de su pareja en el Excel.
-    Devuelve solo la cantidad de parejas que cruzó.
+def buscar_parejas(banco: pandas.DataFrame, erp: pandas.DataFrame) -> list[tuple[int, int]]:
+    """Recorre una vez cada tabla. Devuelve los pares (fila del banco, fila del
+    ERP) que cruzaron, en el orden del banco.
     """
-    preparar_columna_de_pareja(banco, es_sistema=False)
-    preparar_columna_de_pareja(sistema, es_sistema=True)
-    # Dónde está cada columna que se escribe, para marcar por posición de fila.
-    estado_banco, pareja_banco = banco.columns.get_loc(ESTADO), banco.columns.get_loc("Fila en Sistema")
-    estado_sistema, pareja_sistema = sistema.columns.get_loc(ESTADO), sistema.columns.get_loc("Fila en Banco")
-    # Las filas del sistema que esperan pareja, agrupadas por fecha y monto, en
-    # el orden del archivo. Los gastos bancarios no entran: no están "Sin cruzar".
+    # Las filas del ERP que esperan pareja, agrupadas por fecha y monto, en el
+    # orden de la tabla. Un gasto bancario no entra: no puede ser pareja de nadie.
     disponibles = defaultdict(deque)
-    for posicion, (fecha, monto, estado) in enumerate(
-            zip(sistema["Fecha"], sistema["Monto en centavos"], sistema[ESTADO])):
-        if estado == SIN_CRUZAR:
-            disponibles[(fecha, monto)].append(posicion)
-    cruces = 0
-    # Se recorre el banco en orden: cada fila "Sin cruzar" toma la primera del
-    # sistema que coincide y que todavía no se usó.
-    for posicion, (fecha, monto, estado) in enumerate(
-            zip(banco["Fecha"], banco["Monto en centavos"], banco[ESTADO])):
-        if estado != SIN_CRUZAR:
+    for fila, fecha, monto, clase in zip(erp.index, erp["Fecha"], erp[MONTO], erp["Clase"]):
+        if clase == CLASE_MOVIMIENTO:
+            disponibles[(fecha, monto)].append(fila)
+    parejas = []
+    for fila, fecha, monto, clase in zip(banco.index, banco["Fecha"], banco[MONTO], banco["Clase"]):
+        # Un gasto bancario del banco ni siquiera busca pareja.
+        if clase != CLASE_MOVIMIENTO:
             continue
-        candidatos = disponibles[(fecha, monto)]
-        if not candidatos:
+        # Se consulta con get: preguntar por una fecha y un monto que el ERP no
+        # tiene no los agrega a la lista de los que esperan.
+        esperando = disponibles.get((fecha, monto))
+        if not esperando:
             continue
-        del_sistema = candidatos.popleft()
-        cruces += 1
-        # Cada una queda "Cruzado" y anota la fila de su pareja en el otro lado.
-        banco.iat[posicion, estado_banco] = CRUZADO
-        banco.iat[posicion, pareja_banco] = del_sistema + PRIMERA_FILA_DE_DATOS
-        sistema.iat[del_sistema, estado_sistema] = CRUZADO
-        sistema.iat[del_sistema, pareja_sistema] = posicion + PRIMERA_FILA_DE_DATOS
-    return cruces
+        parejas.append((fila, esperando.popleft()))
+    return parejas

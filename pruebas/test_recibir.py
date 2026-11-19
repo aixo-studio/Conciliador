@@ -1,11 +1,10 @@
-"""Prueba de la recepción (paso 1): el control de la forma de la tabla que llega
-de la etapa 1 y el Estado con el que arranca cada fila. Se rompen las tablas a
-propósito. Todo con datos inventados.
+"""Prueba de la recepción (paso 1): el control de la forma de la tabla que
+llega de la etapa 1. Se rompen las tablas a propósito. Todo con datos inventados.
 """
 import pandas
 import pytest
 
-from motor.recibir import COLUMNAS, validar_tabla_de_entrada, crear_copia_con_estado
+from motor.recibir import COLUMNAS, validar_tabla_de_entrada
 from pruebas.datos import tabla
 
 # Un extracto inventado: dos movimientos y dos gastos bancarios, mezclados.
@@ -88,25 +87,3 @@ def test_muestra_los_primeros_20_errores_y_dice_cuantos_mas_hay():
     mensaje = str(error.value)
     assert "hay 25 filas con errores" in mensaje and "… y 5 más." in mensaje
     assert "fila 20:" in mensaje and "fila 21:" not in mensaje
-
-
-def test_cada_fila_arranca_con_el_estado_de_su_clase():
-    resultado = crear_copia_con_estado(tabla(FILAS))
-    assert list(resultado.columns) == COLUMNAS + ["Estado"]
-    assert list(resultado["Estado"]) == ["Sin cruzar", "Gasto bancario", "Sin cruzar", "Gasto bancario"]
-
-
-def test_la_tabla_recibida_no_cambia_al_poner_el_estado():
-    recibida = tabla(FILAS)
-    resultado = crear_copia_con_estado(recibida)
-    # La recibida sigue igual, sin la columna nueva; y la copia conserva las cinco columnas.
-    assert recibida.equals(tabla(FILAS))
-    assert resultado[COLUMNAS].equals(recibida)
-
-
-def test_tocar_la_copia_no_modifica_la_tabla_original():
-    original_recibida = tabla(FILAS)
-    resultado = crear_copia_con_estado(original_recibida)
-    resultado.loc[0, "Monto en centavos"] = 1
-    resultado.loc[0, "Estado"] = "Cruzado"
-    assert original_recibida.equals(tabla(FILAS))

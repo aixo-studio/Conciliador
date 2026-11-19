@@ -14,10 +14,11 @@ mes. Es la etapa 2 de la conciliación bancaria.
   las devuelve la etapa 1 (ver el contrato de más abajo): la del extracto del
   banco y la del libro del sistema. Lo primero que hace es controlar que
   cumplan ese contrato; si no cumplen, frena y dice por qué.
-- **Qué hace hoy:** marca los gastos bancarios con su Estado, hace el cruce
-  exacto (misma fecha y mismo monto) sobre el resto, controla que no se perdió
-  nada y escribe el Excel donde le indique quien llama. Todo lo encadena
-  `cruzar_cuenta()` (en `cruzar_cuenta.py`).
+- **Qué hace hoy:** hace el cruce exacto (misma fecha y mismo monto) entre las
+  filas "Movimiento" (los gastos bancarios no cruzan), controla que no se
+  perdió nada y devuelve tres tablas (cruces, banco pendiente y ERP pendiente)
+  y un resumen. No escribe ningún archivo. Todo lo encadena `cruzar_cuenta()`
+  (en `cruzar_cuenta.py`).
 - **Quién consigue las tablas:** llamar a v3 y la terminal son la comunicación
   entre los repos (APR-235). Hasta que exista, este repo no se corre de punta
   a punta: se verifica con `python -m pytest`.
@@ -96,9 +97,9 @@ Ahí manda la velocidad.
 ## Dónde están los datos
 
 Los archivos reales viven fuera del repo y nunca se suben. Este repo ya no
-lee ninguna carpeta: recibe las dos tablas por parámetro y escribe el Excel
-del cruce en la ruta que le indica quien llama. Qué carpeta es esa y cómo se
-corre todo junto se definen con la comunicación entre los repos (APR-235).
+lee ni escribe ninguna carpeta: recibe las dos tablas por parámetro y devuelve
+el resultado. Cómo se corre todo junto y si se escribe un archivo de salida
+(y dónde) se definen con la comunicación entre los repos (APR-235).
 
 ## La entrada: el contrato con la etapa 1
 
@@ -170,23 +171,25 @@ Cambios:
 ## Orden del repositorio
 
 - `cruzar_cuenta.py` es la puerta de entrada: `cruzar_cuenta(tabla_banco,
-  tabla_sistema, ruta_salida)` recibe las dos tablas de una cuenta, corre cada
-  paso y escribe el Excel. Es lo que llama quien consigue las tablas (APR-235).
+  tabla_erp)` recibe las dos tablas de una cuenta, corre cada paso y devuelve
+  los cruces, el banco pendiente, el ERP pendiente y el resumen. Es lo que
+  llama quien consigue las tablas (APR-235).
 - `motor/` tiene los pasos del proceso, un archivo por paso: `recibir.py`
-  (controlar la forma de cada tabla y ponerle su Estado inicial),
-  `cruce_exacto.py` (misma fecha y mismo monto, solo filas "Sin cruzar"),
-  `controlar.py` (después del cruce, cada tabla contra la recibida) y
-  `salida.py` (los controles que unen a los dos lados y el Excel).
+  (controlar que cada tabla cumpla el contrato, sin modificarla),
+  `cruce_exacto.py` (misma fecha y mismo monto, solo filas "Movimiento"; devuelve
+  las tres tablas) y `controlar.py` (con lo que devolvió el cruce se vuelve a
+  armar lo que entró: si no da igual, frena; si da, devuelve el resumen).
 - Este repo no tiene nada propio de un banco: qué es gasto bancario lo decide
   v3, y acá llega en la columna Clase.
 - `pruebas/` tiene una prueba por archivo de `motor/` y una de la corrida
   completa, con datos inventados; `pruebas/datos.py` arma esas tablas.
-- La salida tiene tres hojas: "Resumen", "Banco" y "Sistema". Banco y Sistema
-  llevan todas las filas de la entrada, en el mismo orden, con siete columnas:
-  Fecha · Código · Descripción · Monto · Clase · Estado · "Fila en Sistema" /
-  "Fila en Banco" (la fila de la pareja en la otra hoja de este mismo archivo;
-  el encabezado es la fila 1 y los datos empiezan en la 2). Cada pasada nueva
-  solo cambia el estado de filas "Sin cruzar"; nunca agrega ni saca filas.
+- El resultado son tres tablas. "Cruces": las filas del banco que cruzaron,
+  con las cinco columnas del contrato y una sexta, "Fila en ERP" (el número de
+  fila de su pareja en la tabla del ERP tal como llegó; la primera es la 0).
+  "Banco pendiente" y "ERP pendiente": las filas que no cruzaron, con las cinco
+  columnas; los gastos bancarios quedan en el banco pendiente. Cada tabla
+  conserva el orden y el número de fila con que llegó; entre las tres están
+  todas las filas que entraron, ni una más ni una menos.
 - Cada archivo hace una sola cosa. Nada de archivos sueltos ni de código para
   necesidades que todavía no existen. Menos código es mejor.
 
