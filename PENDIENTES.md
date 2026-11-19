@@ -2,110 +2,91 @@
 
 ## Abierto, en orden de prioridad
 
-### 1. Comunicación con v3 (APR-235, lo tiene Luciano)
+### General
 
-Lo que falta para correr de punta a punta, ahora que el cruce ya trabaja
-sobre las tablas:
+1. **Unión de los repos (APR-235), lo que falta:**
+   - 4c: README de la raíz (con la decisión de unir), `conciliador/README.md`
+     y el de la preconciliación al día.
+   - 5: `conciliar.py`, que corre las dos etapas de punta a punta. Verificar
+     el cruce de septiembre contra la referencia.
+   - 6: PR a main, archivar Pre-procesamiento-bancario-, renombrar la carpeta
+     local a "Conciliador" y recrear el `.venv`. La carpeta "conciliacion v3"
+     se guarda un tiempo como respaldo.
+2. **Archivos originales del cliente:** pedir septiembre tal como sale del
+   banco y del sistema (sin abrir ni guardar en Excel), de los 3 bancos, y
+   probarlos. Hoy se prueba con copias armadas por nosotros.
+3. **Salida en CSV** de las tres tablas del cruce. Después de la unión.
+4. **Dónde termina el sistema:** qué se entrega al final y a quién.
 
-- Conseguir las dos tablas de una cuenta: llamar a `convertir_documento()` de
-  v3, una vez por archivo, y pasárselas a `cruzar_cuenta()`.
-- La terminal: qué recibe, qué muestra y si escribe algo. La vieja
-  (`cruzar.py`) se borró junto con la entrada por Excel.
-- La salida: `cruzar_cuenta()` hoy devuelve tablas y no escribe nada. Si se
-  escribe un archivo (CSV o Excel), definir dónde y qué pasa con el resultado
-  anterior de esa cuenta si una corrida falla.
-- Verificar septiembre 2026 contra la referencia fija del CLAUDE.md: hasta
-  ahora todo está probado con tablas inventadas.
+### Etapa 1 (preconciliación)
 
-### 2. Definir la lógica del cruce
+1. **Completar las listas de gastos** de cada banco con otros meses: hoy salen
+   solo de septiembre.
+2. **Frenar si el archivo trae más de una hoja.** Hoy lee la primera sin
+   avisar (pasó con un Galicia con una hoja de gastos hecha a mano adelante).
+3. **Prueba automática con archivos reales:** una lista de referencia por mes,
+   fuera del repo, que `pytest` compare sola; si los archivos no están, se
+   saltea.
+4. **Controlar que el libro del ERP sea de la cuenta del banco** (columna
+   "Cuenta" del libro).
+5. **Control de saldos** para detectar un extracto incompleto (el Supervielle
+   trae Saldo).
+6. **Avisar los códigos de gasto nunca vistos.** Hoy un gasto con código nuevo
+   sale como "Movimiento" sin aviso.
+7. **Un tramo sin control:** después de controlar contra el original, se arma
+   la tabla y se pone la Clase; ese paso no lo verifica nadie. Riesgo bajo.
+8. **Bancos con una sola columna de monto** (con signo, o importe + D/C).
+   Toca el `motor/`: esperar un extracto real.
+9. **Bancos nuevos** (APR-221): esperar los extractos del cliente.
 
-Alcance decidido: dos pasadas de cruce, una después de la otra.
+### Etapa 2 (conciliador)
 
-1. **Cruce exacto** (misma fecha y mismo monto). Hecho, ver abajo.
-2. **Sumas del mismo día**: una fila de un documento contra 2 o 3 filas del
-   otro documento, de la misma fecha, que sumadas dan su monto exacto. En las
-   dos direcciones. Se evalúa con el resultado del cruce exacto a la vista.
-   Con septiembre (y los gastos ya separados) cruzaría pocos grupos: 5 en
-   BBVA, 2 en Galicia, 0 en Supervielle.
-
-Decisiones a tomar:
-
-- **Gastos bancarios**: los reconoce v3, con la lista de cada banco. Llegan
-  con Clase "Gasto bancario", ninguna pasada los toma y quedan en el banco
-  pendiente (decidido el 2026-11-10, APR-223; desde el 2026-11-16 ya no hay
-  columna Estado).
-- **Más de un candidato** en la pasada de sumas: qué se hace (idea: no cruzar
-  y anotar cuántos candidatos había).
-- **Sumas**: si cruzan directo o quedan "a revisar" para que alguien confirme.
-- **Pasada de sumas**: si trabaja sobre las tablas pendientes que deja el
-  cruce exacto, o si se corre todo junto.
-- **Controles de mes**: qué hacer si una fila tiene fecha de otro mes.
-
-### 3. Fuera del alcance actual (anotado para no perderlo)
-
-Con septiembre, después del cruce exacto y de separar gastos:
-- **Mismo monto con fecha cercana** (hasta 3 días, que cubre fines de semana):
-  cruzaría 76 filas en BBVA, 3 en Galicia y 11 en Supervielle.
-- **Diferencias de 1 a 5 centavos el mismo día**: 9 en BBVA.
-- **Pagos partidos en muchas partes** (ej. haberes: una línea en el sistema y
-  muchas transferencias en el banco): no los alcanza una suma de 2 o 3.
-
-### 4. Datos que no llegan en el contrato de v3
-
-El número de cheque del BBVA (Número Documento), el texto del Concepto del
-BBVA y del Galicia y los datos extra del Galicia (Leyendas Adicionales) no
-llegan. Si el cruce los necesita, hay que cambiar el contrato de v3.
-
-### 5. Definir dónde termina la etapa
-
-Qué entrega al final esta etapa y a quién.
-
-### 6. Un tramo sin verificar en v3 (para hablar con Luciano)
-
-v3 controla lo armado contra el archivo original, y después arma la tabla y
-le pone la Clase a cada fila. Ese último paso no lo verifica nadie: este repo
-controla contra la tabla que recibe, no contra el archivo del banco. El
-riesgo es bajo (ese paso no mueve ni filtra filas), pero es un tramo sin
-control. Si se quiere cerrar, lo haría v3 antes de devolver la tabla, sin
-cambiar el contrato.
+1. **Segunda pasada: sumas del mismo día.** Una fila contra 2 o 3 del otro
+   lado, misma fecha, en las dos direcciones (septiembre: 5 grupos en BBVA, 2
+   en Galicia, 0 en Supervielle). A decidir: qué pasa con más de un
+   candidato, si cruzan directo o quedan "a revisar", y si trabaja sobre lo
+   pendiente del cruce exacto.
+2. **Filas con fecha de otro mes:** qué se hace con ellas.
+3. **Recuperar las Decisiones del README**, que se perdieron el 2026-11-12;
+   revisar cuáles siguen vigentes.
+4. **Datos que no llegan en el contrato:** cheque y Concepto del BBVA,
+   Concepto y Leyendas del Galicia. Si el cruce los necesita, es un cambio de
+   contrato.
+5. **Fuera del alcance por ahora** (septiembre): mismo monto con fecha cercana
+   de hasta 3 días (76 BBVA, 3 Galicia, 11 Supervielle), diferencias de 1 a 5
+   centavos (9 BBVA) y pagos partidos en muchas partes.
 
 ## Hecho
 
-- 2026-11-16 — El cruce devuelve tres tablas (APR-214): `cruzar_cuenta()`
-  recibe las dos tablas, valida el contrato, hace el cruce exacto y devuelve
-  los cruces (con "Fila en ERP"), el banco pendiente (con los gastos
-  bancarios), el ERP pendiente y el resumen. Se sacan la columna Estado, el
-  Excel de salida y `motor/salida.py`: la salida se define cuando exista la
-  segunda pasada. Probado con tablas inventadas; septiembre, sin verificar.
-- 2026-11-11 — El cruce pasa al contrato del 2026-11-04 (APR-214):
-  `cruzar_cuenta()` encadena recibir (chequeos y Estado), el cruce exacto solo
-  sobre filas "Sin cruzar", el control contra la tabla recibida, los controles
-  entre los dos lados y el Excel de siete columnas (entra Clase, sale
-  Criterio; la pareja es la fila de la otra hoja, contando desde la 2). Se
-  borran `cruzar.py` y `motor/entrada.py`. Probado con tablas inventadas; la
-  corrida real y septiembre quedan para APR-235.
-- 2026-11-10 — Control del contrato nuevo de v3 (APR-223): `motor/recibir.py`
-  (la forma de la tabla que llega y el Estado inicial de cada fila) y
-  `motor/controlar.py` (después del cruce, el resultado contra la tabla tal
-  como llegó). Probado con tablas inventadas; **sin conectar** al programa
-  hasta APR-214, y sin verificar con datos reales. El repo pasa a Python 3.12
-  y suma pandas, como v3. El programa sigue corriendo igual que antes.
-- 2026-11-06 — Se sacan `bancos.json` y `motor/gastos.py` (APR-226): qué es
-  gasto bancario lo decide v3. La idea de avisar los códigos de gasto nunca
-  vistos quedó en el PENDIENTES de v3, donde vive la lista. La salida no
-  cambia.
-- 2026-10-21 — bancos.json y motor/gastos.py: cómo se reconoce un gasto
-  bancario en cada banco por su Código (APR-215, primera parte). Con
-  septiembre reconoce BBVA 836 filas (−25.702.218,68), Galicia 387
-  (−58.477.591,43) y Supervielle 89 (−986.203,99), igual que la separación
-  manual. No está conectado al cruce: el Excel no cambia.
-- 2026-10-19 — Base del repo: lectura de la entrada con control del contrato,
-  cruce exacto (misma fecha y mismo monto; repetidos emparejados en orden) y
-  Excel de salida con hojas Resumen, Banco y Sistema. Septiembre: BBVA 394
-  cruces, Galicia 86, Supervielle 54.
-- 2026-10-20 — La entrada pasa a tener "Código" en vez de "Concepto" (cambio de
-  contrato de v3, commit 306da11): el valor puro de la columna que identifica
-  el tipo de movimiento en cada banco. La lectura frena si el Código no es texto.
-- 2026-10-19 — Cada fila cruzada dice en qué fila del otro documento está su
-  pareja ("Fila en Sistema" / "Fila en Banco", numeradas como en el output de
-  v3), en lugar de un número de cruce.
+### General
+
+- 2026-11-19 — Unión de los repos, pasos 1 a 4a: cada etapa en su carpeta,
+  la preconciliación con su historial, un solo `pytest.ini`, `requirements.txt`
+  y CLAUDE.md. Solo cambiaron rutas de imports. 83 pruebas y septiembre igual.
+
+### Etapa 1 (preconciliación)
+
+- 2026-11-04 — Verificación de formato (APR-218): solo las columnas que se
+  usan; si falta una, dice cuál y en qué fila; todas las filas con errores en
+  un solo mensaje.
+- 2026-11-04 — Devuelve un DataFrame en vez de escribir Excel; los gastos se
+  marcan con la columna Clase. Sale el mes.
+- 2026-11-03 — El contrato queda igual en los dos CLAUDE.md, con fecha (APR-227).
+- 2026-10-30 — Gastos en una hoja aparte y control antes de separar
+  (APR-222, APR-223). Reemplazado el 2026-11-04 por la columna Clase.
+- 2026-10-28 — Lista `gastos` por banco en `configuracion.toml`, comparación
+  exacta del Código (APR-219).
+- 2026-10-26 — Un documento por corrida; las reglas pasan a
+  `configuracion.toml`.
+
+### Etapa 2 (conciliador)
+
+- 2026-11-16 — El cruce devuelve tres tablas y un resumen (APR-214). Salen la
+  columna Estado, el Excel y `motor/salida.py`.
+- 2026-11-11 — El cruce pasa al contrato del 2026-11-04 (APR-214).
+- 2026-11-10 — Control del contrato al recibir y control del resultado
+  contra lo recibido (APR-223).
+- 2026-11-06 — Qué es gasto bancario lo decide la etapa 1 (APR-226).
+- 2026-10-20 — La entrada usa "Código" en vez de "Concepto".
+- 2026-10-19 — Base: cruce exacto (misma fecha y mismo monto; repetidos en
+  orden) y cada cruce dice la fila de su pareja.
