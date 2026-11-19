@@ -36,35 +36,36 @@ source .venv/bin/activate
 
 Todos los comandos se corren desde la raíz del repo.
 
-**Probar un documento** (etapa 1). Muestra el resumen y no guarda nada:
+**Conciliar una cuenta** (las dos etapas, de punta a punta). Recibe el banco, el extracto y el libro del ERP de esa cuenta, muestra el resumen de cada lado y no guarda nada:
+
+```bash
+python conciliar.py BBVA "ruta/extracto.xls" "ruta/libro.xlsx"
+```
+
+**Probar un documento solo** (etapa 1). Muestra su resumen y no guarda nada:
 
 ```bash
 python -m preconciliacion.convertir BBVA "ruta/extracto.xls"
 python -m preconciliacion.convertir BBVA "ruta/libro.xlsx" --erp
 ```
 
-**Cruzar una cuenta** (etapas 1 y 2), desde Python:
+**Desde Python:**
 
 ```python
-from pathlib import Path
+from conciliar import conciliar
 
-from preconciliacion.convertir import convertir_documento
-from conciliador.cruzar_cuenta import cruzar_cuenta
-
-tabla_banco = convertir_documento(Path("ruta/extracto.xls"), "BBVA", es_erp=False)
-tabla_erp = convertir_documento(Path("ruta/libro.xlsx"), "BBVA", es_erp=True)
-cruces, banco_pendiente, erp_pendiente, resumen = cruzar_cuenta(tabla_banco, tabla_erp)
+cruces, banco_pendiente, erp_pendiente, resumen = conciliar("BBVA", "ruta/extracto.xls", "ruta/libro.xlsx")
 ```
 
-Si un archivo no se puede convertir o algo no cierra, frena con un error que dice por qué y no devuelve nada a medias.
-
-Un comando que corra las dos etapas de punta a punta (`conciliar.py`) está en construcción.
+Si un archivo no se puede convertir o algo no cierra, frena con un error que dice por qué y en qué parte (el extracto, el libro del ERP o el cruce), y no devuelve nada a medias.
 
 ## Estructura
 
 ```
+conciliar.py         la puerta de entrada: concilia una cuenta de punta a punta
 preconciliacion/     etapa 1: limpia cada documento
 conciliador/         etapa 2: cruza las dos tablas de una cuenta
+pruebas/             la prueba del recorrido completo, con archivos inventados
 CLAUDE.md            cómo se trabaja en el repo y el contrato entre las dos etapas
 PENDIENTES.md        lo abierto y lo hecho
 pytest.ini           corre las pruebas de las dos etapas
@@ -90,3 +91,5 @@ Las de cada etapa están en su README. Estas son las de todo el sistema.
 **1. Las dos etapas en un solo repo** (2026-11-19). Antes eran dos repos (Pre-procesamiento-bancario- y Conciliador). Se unieron porque la etapa 1 va a cambiar seguido (códigos de gasto y bancos nuevos) y, con dos repos, la etapa 2 podía quedar usando una versión vieja sin aviso. Se descartó instalar la etapa 1 como paquete en la etapa 2: tiene el mismo riesgo de versiones desfasadas. Límite: la etapa 1 ya no se puede usar sola sin separarla; la frontera entre etapas es una regla (la etapa 1 nunca usa nada de la etapa 2), no un repo. La historia de los dos repos quedó en este.
 
 **2. La etapa 2 controla lo que recibe con su propia copia del contrato.** Aunque estén en el mismo repo, la etapa 2 no toma las columnas ni las clases de la etapa 1: las tiene escritas aparte. Así, si la etapa 1 cambia algo por error, la etapa 2 frena en vez de cruzar datos mal armados. Límite: si el contrato cambia a propósito, hay que cambiarlo en las dos etapas en el mismo commit.
+
+**3. Un solo archivo conoce a las dos etapas: `conciliar.py`, en la raíz** (2026-11-19). Llama a la etapa 1 una vez por archivo y le pasa las dos tablas a la etapa 2. Así ninguna etapa depende de la otra y cada una se sigue probando sola. Se descartó que la etapa 2 llamara directo a la etapa 1: rompería la frontera y sus pruebas necesitarían archivos Excel. Si algo falla, el error dice en qué parte. Tiene una función (`conciliar`) para otros programas y la terminal para usarlo a mano, como `convertir.py`. Límite: por ahora solo muestra el resumen; las tablas no se guardan en ningún archivo.

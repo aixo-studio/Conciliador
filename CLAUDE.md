@@ -20,9 +20,8 @@ dos etapas, cada una en su carpeta:
   avisar.
 - Lo que la etapa 1 entrega a la etapa 2 está fijado en el contrato (ver más
   abajo).
-- Lo que encadena las dos etapas de punta a punta (`conciliar.py`, APR-235)
-  todavía no existe. Hasta entonces, el repo se verifica con
-  `python -m pytest` y la etapa 1, además, con los archivos reales.
+- `conciliar.py`, en la raíz, encadena las dos etapas de punta a punta: es el
+  único archivo que conoce a las dos.
 - **Dónde termina:** todavía a definir (ver PENDIENTES.md).
 
 ### Etapa 1: la preconciliación (`preconciliacion/`)
@@ -137,9 +136,10 @@ etapa 2 recibe las dos tablas de una cuenta y devuelve el resultado. Armar el
 par extracto + libro de cada cuenta es de quien llama. Si se escribe un
 archivo de salida, y dónde, se define más adelante (ver PENDIENTES.md).
 
-Cómo se prueba un archivo desde la terminal, en la raíz del repo (muestra el
-resumen, no guarda nada):
+Cómo se prueba desde la terminal, en la raíz del repo (muestra el resumen, no
+guarda nada):
 
+    python conciliar.py BBVA "ruta/extracto.xls" "ruta/libro.xlsx"      la cuenta BBVA de punta a punta
     python -m preconciliacion.convertir BBVA "ruta/extracto.xls"         el extracto del BBVA
     python -m preconciliacion.convertir BBVA "ruta/libro.xlsx" --erp     el libro del ERP de la cuenta BBVA
 
@@ -213,9 +213,11 @@ Cambios:
 
 - Una carpeta por etapa, `preconciliacion/` y `conciliador/`, cada una con su
   puerta de entrada, su `motor/`, sus `pruebas/` y su README.
-- En la raíz: este CLAUDE.md, el README.md general, PENDIENTES.md,
-  `pytest.ini` (corre las pruebas de las dos etapas), `requirements.txt` (un
-  solo `.venv` para las dos) y `.gitignore`.
+- En la raíz: `conciliar.py` (la puerta de entrada de punta a punta: la
+  función `conciliar` y la terminal), `pruebas/` (la prueba del recorrido
+  completo), este CLAUDE.md, el README.md general, PENDIENTES.md, `pytest.ini`
+  (corre las pruebas de las dos etapas y la del recorrido), `requirements.txt`
+  (un solo `.venv` para todo) y `.gitignore`.
 - Cada archivo hace una sola cosa. Nada de archivos sueltos ni de código para
   necesidades que todavía no existen. Menos código es mejor.
 
@@ -291,8 +293,7 @@ Cambios:
       Galicia       86 cruces | banco sin cruzar   414 | sistema sin cruzar  13
       Supervielle   54 cruces | banco sin cruzar   118 | sistema sin cruzar  11
 
-  (Se vuelve a comprobar cuando `conciliar.py` (APR-235) conecte las dos
-  etapas; hasta entonces, las pruebas de la etapa 2 usan tablas inventadas.)
+  (Comprobado de punta a punta con `conciliar.py` el 2026-11-19.)
 
 - Lo que no se comprobó se informa como "sin verificar". Nunca presentar como
   comprobado algo que no se comprobó.

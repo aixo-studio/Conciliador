@@ -4,14 +4,10 @@
 
 ### General
 
-1. **Unión de los repos (APR-235), lo que falta:**
-   - 4c: README de la raíz (con la decisión de unir), `conciliador/README.md`
-     y el de la preconciliación al día.
-   - 5: `conciliar.py`, que corre las dos etapas de punta a punta. Verificar
-     el cruce de septiembre contra la referencia.
-   - 6: PR a main, archivar Pre-procesamiento-bancario-, renombrar la carpeta
-     local a "Conciliador" y recrear el `.venv`. La carpeta "conciliacion v3"
-     se guarda un tiempo como respaldo.
+1. **Unión de los repos (APR-235), lo que falta:** PR a main, archivar
+   Pre-procesamiento-bancario-, renombrar la carpeta local a "Conciliador" y
+   recrear el `.venv`. La carpeta "conciliacion v3" se guarda un tiempo como
+   respaldo.
 2. **Archivos originales del cliente:** pedir septiembre tal como sale del
    banco y del sistema (sin abrir ni guardar en Excel), de los 3 bancos, y
    probarlos. Hoy se prueba con copias armadas por nosotros.
@@ -63,9 +59,13 @@
 
 ### General
 
-- 2026-11-19 — Unión de los repos, pasos 1 a 4a: cada etapa en su carpeta,
-  la preconciliación con su historial, un solo `pytest.ini`, `requirements.txt`
-  y CLAUDE.md. Solo cambiaron rutas de imports. 83 pruebas y septiembre igual.
+- 2026-11-19 — `conciliar.py`: concilia una cuenta de punta a punta (las dos
+  etapas). Septiembre da igual a la referencia en los 3 bancos (BBVA 394
+  cruces, Galicia 86, Supervielle 54).
+- 2026-11-19 — Unión de los repos, pasos 1 a 4: cada etapa en su carpeta,
+  la preconciliación con su historial, un solo `pytest.ini`, `requirements.txt`,
+  CLAUDE.md, PENDIENTES y README general. Solo cambiaron rutas de imports.
+  83 pruebas y septiembre igual.
 
 ### Etapa 1 (preconciliación)
 
