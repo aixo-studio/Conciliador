@@ -1,4 +1,4 @@
-# Conciliación v3 — preprocesamiento de documentos
+# Etapa 1: la preconciliación
 
 Etapa 1 de la conciliación bancaria. Recibe un documento (el extracto de un
 banco o el libro del ERP de esa cuenta) y lo devuelve limpio, como un
@@ -9,24 +9,18 @@ la fila es un gasto bancario. Sin IA: todo son reglas fijas, escritas en
 
 No guarda ni borra ningún archivo: quien llama recibe el DataFrame.
 
-Quien llama es la etapa 2, el cruce entre banco y sistema, que va en otro repo
-(en GitHub "Conciliador", carpeta local "conciliacion v4"). Conciliador recibe
-los dos archivos de una cuenta y llama a este repo una vez por cada uno.
+Quien la usa es la etapa 2 (el conciliador, en `conciliador/` de este mismo
+repo), que cruza los dos archivos de una cuenta: la etapa 1 se llama una vez
+por cada uno.
 
 ## Cómo se usa
 
-La primera vez, en la terminal, dentro de esta carpeta:
+La instalación está en el README de la raíz del repo.
 
-```
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-**Desde Conciliador** (el uso normal):
+**Desde la etapa 2** (el uso normal):
 
 ```python
-from convertir import convertir_documento
+from preconciliacion.convertir import convertir_documento
 
 extracto = convertir_documento(Path("extracto.xls"), "BBVA", es_erp=False)
 libro = convertir_documento(Path("libro.xlsx"), "BBVA", es_erp=True)
@@ -37,19 +31,21 @@ el DataFrame. Si algo no cierra, frena con un `ValueError` que dice por qué:
 el banco que no está configurado, las columnas que faltan o todas las filas
 con errores.
 
-**Desde la terminal**, para probar un archivo y ver el resumen (no guarda nada):
+**Desde la terminal**, en la raíz del repo, para probar un archivo y ver el
+resumen (no guarda nada):
 
 ```
 source .venv/bin/activate
-python convertir.py BBVA "ruta/extracto.xls"          el extracto del BBVA
-python convertir.py BBVA "ruta/libro.xlsx" --erp      el libro del ERP de la cuenta BBVA
+python -m preconciliacion.convertir BBVA "ruta/extracto.xls"        el extracto del BBVA
+python -m preconciliacion.convertir BBVA "ruta/libro.xlsx" --erp    el libro del ERP de la cuenta BBVA
 ```
 
 Muestra las filas (y las ignoradas), las columnas, la suma, cuántas filas son
 gasto bancario y cuánto suman, y la primera y la última fecha.
 
-Para correr las pruebas: `python -m pytest` (así usa el Python del `.venv`
-aunque haya otro instalado, por ejemplo el de conda).
+Para correr las pruebas, desde la raíz del repo: `python -m pytest` (así usa
+el Python del `.venv` aunque haya otro instalado, por ejemplo el de conda).
+Corre las de las dos etapas.
 
 ## Lo que se devuelve
 
@@ -63,12 +59,12 @@ Un DataFrame con una fila por movimiento, en el orden del original:
 | Monto en centavos | entero (`int64`) | crédito positivo, débito negativo; en el sistema, Debe positivo y Haber negativo |
 | Clase | texto | `"Gasto bancario"` o `"Movimiento"`; en el libro del ERP, siempre `"Movimiento"` |
 
-Es el contrato con Conciliador: está en el CLAUDE.md, con su versión.
+Es el contrato con la etapa 2: está en el CLAUDE.md de la raíz, con su versión.
 
 ## Mapa de carpetas
 
 ```
-convertir.py           la puerta de entrada: la función que llama Conciliador y la terminal
+convertir.py           la puerta de entrada: la función que llama la etapa 2 y la terminal
 configuracion.toml     las reglas de cada banco y del ERP, con la lista de gastos de cada banco
 motor/                 lo que es igual para todos los documentos
   configuracion.py     trae del config las reglas, controla la lista de gastos de
@@ -84,9 +80,10 @@ documentos/            un README.md por documento: cómo viene y los porqués (p
   sistema_finnegans/     el libro del ERP (sirve para la cuenta de cualquier banco)
 pruebas/               una prueba por documento, una de la entrada, una de los gastos,
                        una del control y una del DataFrame, con datos inventados
-CLAUDE.md              cómo se trabaja en este repo y el contrato con Conciliador
-PENDIENTES.md          lo abierto y lo hecho
 ```
+
+Todo dentro de `preconciliacion/`. El CLAUDE.md (cómo se trabaja y el contrato
+con la etapa 2) y el PENDIENTES.md están en la raíz del repo.
 
 ## Mapa del flujo
 

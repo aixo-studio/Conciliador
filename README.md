@@ -1,57 +1,75 @@
 # Conciliador
 
-Cruza los movimientos de un extracto bancario con los del libro del sistema financiero (el ERP) para una cuenta. Devuelve tres tablas (los cruces, lo pendiente del banco y lo pendiente del ERP) y un resumen. Por ahora no escribe ningún archivo: la salida se define cuando exista la segunda pasada del cruce.
+Conciliación bancaria sin IA: cruza el extracto de un banco con el libro del sistema financiero (el ERP) de esa cuenta, para el mismo mes. Todo lo deciden reglas fijas.
 
-## Requisitos e instalación
+Trabaja en dos etapas, cada una en su carpeta:
 
-Requiere **Python 3.12**. Desde la carpeta del repositorio, en macOS o Linux:
+| Etapa | Carpeta | Qué hace |
+|---|---|---|
+| 1. Preconciliación | [`preconciliacion/`](preconciliacion/README.md) | Recibe un documento crudo (el extracto del banco o el libro del ERP) y lo devuelve limpio, como una tabla de cinco columnas. Marca cuáles filas son gastos bancarios. |
+| 2. Conciliador | [`conciliador/`](conciliador/README.md) | Recibe las dos tablas de una cuenta y cruza los movimientos con la misma fecha y el mismo monto. Devuelve lo que cruzó y lo que quedó pendiente de cada lado. |
+
+Bancos configurados: BBVA, Galicia y Supervielle.
+
+## Requisitos
+
+- Python 3.12
+- macOS o Linux
+
+## Instalación
 
 ```bash
+git clone https://github.com/aixo-studio/Conciliador.git
+cd Conciliador
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
+Cada vez que se abre una terminal nueva, se activa el entorno desde la raíz del repo:
+
+```bash
+source .venv/bin/activate
+```
+
 ## Uso
 
-`cruzar_cuenta()` recibe dos DataFrames ya preparados por la etapa de preconciliación: el del extracto del banco y el del libro del ERP.
+Todos los comandos se corren desde la raíz del repo.
+
+**Probar un documento** (etapa 1). Muestra el resumen y no guarda nada:
+
+```bash
+python -m preconciliacion.convertir BBVA "ruta/extracto.xls"
+python -m preconciliacion.convertir BBVA "ruta/libro.xlsx" --erp
+```
+
+**Cruzar una cuenta** (etapas 1 y 2), desde Python:
 
 ```python
+from pathlib import Path
+
+from preconciliacion.convertir import convertir_documento
 from conciliador.cruzar_cuenta import cruzar_cuenta
 
+tabla_banco = convertir_documento(Path("ruta/extracto.xls"), "BBVA", es_erp=False)
+tabla_erp = convertir_documento(Path("ruta/libro.xlsx"), "BBVA", es_erp=True)
 cruces, banco_pendiente, erp_pendiente, resumen = cruzar_cuenta(tabla_banco, tabla_erp)
 ```
 
-Ambas tablas deben tener al menos una fila y estas cinco columnas en orden:
+Si un archivo no se puede convertir o algo no cierra, frena con un error que dice por qué y no devuelve nada a medias.
 
-| Columna | Valor esperado |
-|---|---|
-| `Fecha` | Fecha de pandas |
-| `Código` | Texto, incluidos los ceros iniciales |
-| `Descripción` | Texto. Puede estar vacío. |
-| `Monto en centavos` | Entero con signo |
-| `Clase` | `Movimiento` o `Gasto bancario`. En el libro del sistema, solo `Movimiento`. |
+Un comando que corra las dos etapas de punta a punta (`conciliar.py`) está en construcción.
 
-Devuelve cuatro cosas:
+## Estructura
 
-| Qué | Qué tiene |
-|---|---|
-| `cruces` | Las filas del banco que cruzaron, con las cinco columnas y una sexta, `Fila en ERP`: el número de fila de su pareja en la tabla del ERP tal como llegó (la primera fila es la 0). |
-| `banco_pendiente` | Las filas del banco que no cruzaron, incluidos los gastos bancarios. |
-| `erp_pendiente` | Las filas del ERP que no cruzaron. |
-| `resumen` | Filas y suma en centavos de cada lado: lo que entró, lo cruzado y lo pendiente. En el banco, también los gastos bancarios. |
-
-Las tablas conservan el orden y el número de fila con que llegaron. Las dos que entran no se modifican.
-
-## Cómo funciona
-
-El código está en la carpeta `conciliador/`:
-
-1. **`motor/recibir.py`** valida que las dos tablas cumplan el contrato. No las modifica.
-2. **`motor/cruce_exacto.py`** empareja movimientos con la misma fecha y el mismo monto. Si hay repetidos, los empareja en orden de aparición. Los gastos bancarios quedan fuera del cruce. Trabaja sobre copias y devuelve las tres tablas.
-3. **`motor/controlar.py`** vuelve a armar lo que entró con lo que salió del cruce. Si alguna fila se perdió, se duplicó o cambió, o si lo cruzado no suma lo mismo en el banco y en el ERP, frena. Si todo cierra, devuelve el resumen.
-
-Los importes se comparan y se suman en centavos enteros para mantener exactas las cuentas. Las tablas originales se conservan como referencia para verificar que el cruce respete todas las filas, sus datos y su orden.
+```
+preconciliacion/     etapa 1: limpia cada documento
+conciliador/         etapa 2: cruza las dos tablas de una cuenta
+CLAUDE.md            cómo se trabaja en el repo y el contrato entre las dos etapas
+PENDIENTES.md        lo abierto y lo hecho
+pytest.ini           corre las pruebas de las dos etapas
+requirements.txt     las librerías: pandas, openpyxl, xlrd y pytest
+```
 
 ## Pruebas
 
@@ -60,3 +78,15 @@ Las pruebas usan datos inventados.
 ```bash
 python -m pytest
 ```
+
+## Datos reales
+
+Los archivos de los clientes nunca se suben al repo: se guardan afuera y se le pasa al programa la ruta de cada uno. El programa nunca modifica un original y no escribe ningún archivo.
+
+## Decisiones
+
+Las de cada etapa están en su README. Estas son las de todo el sistema.
+
+**1. Las dos etapas en un solo repo** (2026-11-19). Antes eran dos repos (Pre-procesamiento-bancario- y Conciliador). Se unieron porque la etapa 1 va a cambiar seguido (códigos de gasto y bancos nuevos) y, con dos repos, la etapa 2 podía quedar usando una versión vieja sin aviso. Se descartó instalar la etapa 1 como paquete en la etapa 2: tiene el mismo riesgo de versiones desfasadas. Límite: la etapa 1 ya no se puede usar sola sin separarla; la frontera entre etapas es una regla (la etapa 1 nunca usa nada de la etapa 2), no un repo. La historia de los dos repos quedó en este.
+
+**2. La etapa 2 controla lo que recibe con su propia copia del contrato.** Aunque estén en el mismo repo, la etapa 2 no toma las columnas ni las clases de la etapa 1: las tiene escritas aparte. Así, si la etapa 1 cambia algo por error, la etapa 2 frena en vez de cruzar datos mal armados. Límite: si el contrato cambia a propósito, hay que cambiarlo en las dos etapas en el mismo commit.

@@ -38,6 +38,9 @@
 8. **Bancos con una sola columna de monto** (con signo, o importe + D/C).
    Toca el `motor/`: esperar un extracto real.
 9. **Bancos nuevos** (APR-221): esperar los extractos del cliente.
+10. **La ruta como texto:** `convertir_documento("archivo.xls", …)` falla con
+    "no se pudo abrir como Excel"; hay que pasarla como `Path`. Aceptar
+    texto o dar un error claro.
 
 ### Etapa 2 (conciliador)
 
