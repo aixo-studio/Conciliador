@@ -7,7 +7,7 @@ cuentas, y no tiene gastos bancarios.
 import tomllib
 from pathlib import Path
 
-# El archivo de configuración está en la raíz del repo.
+# El archivo de configuración está en la carpeta preconciliacion/, un nivel arriba de motor/.
 RUTA_CONFIGURACION = Path(__file__).resolve().parent.parent / "configuracion.toml"
 
 
