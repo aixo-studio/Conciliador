@@ -6,8 +6,8 @@ lo pendiente, algo se perdió, se duplicó o se modificó, y no se entrega nada.
 """
 import pandas
 
-from motor.cruce_exacto import COLUMNA_PAREJA
-from motor.recibir import CLASE_GASTO_BANCARIO, COLUMNAS, MONTO
+from conciliador.motor.cruce_exacto import COLUMNA_PAREJA
+from conciliador.motor.recibir import CLASE_GASTO_BANCARIO, COLUMNAS, MONTO
 
 
 def validar_y_resumir_cruce(cruces: pandas.DataFrame, banco_pendiente: pandas.DataFrame,

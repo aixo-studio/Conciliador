@@ -1,0 +1,64 @@
+# Reglas para limpiar cada documento. La explicación de cada uno está en
+# documentos/<documento>/README.md.
+#
+# Cada banco tiene su sección en [bancos.<Banco>]: las reglas de su extracto y
+# su lista de gastos bancarios. El libro del ERP tiene una sola sección, [erp],
+# igual para todas las cuentas.
+#
+# Qué dice cada regla:
+#   fecha, codigo, descripcion, credito, debito   qué columna va a cada columna de la salida
+#                  (el nombre exacto del encabezado). El archivo tiene que traer estas
+#                  columnas, más las de "ignorar" y "seguidas"; las demás no importan.
+#   formato_fecha  cómo viene escrita la fecha si viene como texto; si falta, viene como fecha de Excel
+#   seguidas       (opcional) columnas que tienen que estar juntas y en ese orden
+#   ignorar        (opcional) filas que no son movimientos: {columna = "texto"}
+#   gastos         (solo bancos) los valores del Código que son gasto bancario; se comparan
+#                  exactos. Esas filas salen con Clase "Gasto bancario".
+
+[bancos.BBVA]
+# Arriba de la tabla hay filas de título; se ignoran.
+fecha = "Fecha"
+formato_fecha = "%d-%m-%Y"  # viene como texto: 30-09-2026
+codigo = "Codigo"           # el código del tipo de movimiento, ej. 236; viene como texto, con sus ceros
+descripcion = "Detalle"
+credito = "Crédito"
+debito = "Débito"           # viene en negativo; el motor lo toma sin signo
+# Gastos bancarios: los códigos que son gasto. Lista armada por la persona que
+# concilia. Verificado con septiembre 2026: 836 filas.
+gastos = ["015", "030", "037", "098", "101", "102", "122", "236", "241", "286",
+          "392", "521", "530", "543", "550", "589", "609", "758", "798", "882"]
+
+[bancos.Galicia]
+fecha = "Fecha"             # viene como fecha real de Excel
+codigo = "Grupo de Conceptos"  # el grupo del movimiento, ej. 000901 - Impuestos
+descripcion = "Descripción"
+credito = "Créditos"
+debito = "Débitos"          # viene en positivo; el motor lo pone negativo
+# Gastos bancarios: el banco ya agrupa sus gastos. Verificado con septiembre 2026: 387 filas.
+gastos = ["000901 - Impuestos", "000808 - Comisiones", "000814 - Intereses"]
+
+[bancos.Supervielle]
+fecha = "Fecha"
+formato_fecha = "%d/%m/%Y"  # viene como texto: 30/09/2026
+codigo = "Concepto"         # el tipo de movimiento, ej. Impuesto Débitos y Créditos/DB
+descripcion = "Detalle"
+credito = "Crédito"
+debito = "Débito"           # viene en positivo; el motor lo pone negativo
+# Gastos bancarios: el banco no trae código, se usa el texto del Concepto.
+# Verificado con septiembre 2026: 89 filas.
+gastos = ["Impuesto Débitos y Créditos/DB", "IVA", "Cobro Percepción IIBB",
+          "Percepción I.V.A. RG. 3337", "Intereses de Sobregiro", "Contras.Ints.Sobreg.",
+          "Comisión Mantenimiento Cuenta", "IMPUESTO A LOS SELLOS"]
+
+[erp]
+fecha = "Fecha"             # viene como fecha real de Excel
+codigo = "Tipo de documento"  # ej. Orden de pago, Recibo de Cobranzas
+descripcion = "Descripción"
+credito = "Debe"            # plata que entra al banco
+debito = "Haber"            # plata que sale del banco
+# "Debe" y "Haber" aparecen dos veces: un par en pesos y otro en dólares.
+# El de pesos es el que está entre Descripción y Documento. Si esas cuatro
+# columnas no vienen juntas y en este orden, el programa frena.
+seguidas = ["Descripción", "Debe", "Haber", "Documento"]
+# El "Saldo Inicial" no es un movimiento. Si trajera monto, el programa frena.
+ignorar = { Documento = "Saldo Inicial" }

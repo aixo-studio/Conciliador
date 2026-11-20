@@ -1,9 +1,9 @@
 """Prueba del cruce exacto (paso 2): qué cruza, qué queda pendiente de cada
 lado y con qué fila del ERP cruzó cada una. Todo con datos inventados.
 """
-from motor.cruce_exacto import COLUMNA_PAREJA, cruzar_exacto
-from motor.recibir import COLUMNAS
-from pruebas.datos import tabla
+from conciliador.motor.cruce_exacto import COLUMNA_PAREJA, cruzar_exacto
+from conciliador.motor.recibir import COLUMNAS
+from conciliador.pruebas.datos import tabla
 
 
 def test_cruza_misma_fecha_y_mismo_monto():

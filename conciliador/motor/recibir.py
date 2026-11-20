@@ -10,8 +10,8 @@ from datetime import datetime
 
 import pandas
 
-# Lo que este repo espera recibir de la etapa 1. Está escrito acá, y no se toma
-# de v3, a propósito: si v3 cambiara algo por error, este control lo frena.
+# Lo que la etapa 2 espera recibir de la etapa 1. Está escrito acá, y no se toma
+# de la etapa 1, a propósito: si la etapa 1 cambiara algo por error, este control lo frena.
 COLUMNAS = ["Fecha", "Código", "Descripción", "Monto en centavos", "Clase"]
 MONTO = "Monto en centavos"
 CLASE_MOVIMIENTO = "Movimiento"

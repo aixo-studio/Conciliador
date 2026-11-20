@@ -1,18 +1,18 @@
 """La puerta de entrada: cruza una cuenta, el extracto del banco contra el
 libro del ERP.
 
-Recibe las dos tablas tal como las devuelve la etapa 1 ("conciliacion v3"),
+Recibe las dos tablas tal como las devuelve la etapa 1 (`preconciliacion/`),
 corre cada paso y devuelve lo que cruzó y lo que quedó pendiente de cada lado.
 
-Conseguir las tablas (llamando a la etapa 1) es la comunicación entre los dos
-repos (APR-235). El Excel de salida se define cuando exista la segunda pasada
-del cruce; hasta entonces, el resultado son las tres tablas (ver PENDIENTES.md).
+Conseguir las tablas (llamando a la etapa 1) lo hará conciliar.py (APR-235).
+El Excel de salida se define cuando exista la segunda pasada del cruce; hasta
+entonces, el resultado son las tres tablas (ver PENDIENTES.md).
 """
 import pandas
 
-from motor.controlar import validar_y_resumir_cruce
-from motor.cruce_exacto import cruzar_exacto
-from motor.recibir import validar_tabla_de_entrada
+from conciliador.motor.controlar import validar_y_resumir_cruce
+from conciliador.motor.cruce_exacto import cruzar_exacto
+from conciliador.motor.recibir import validar_tabla_de_entrada
 
 
 def cruzar_cuenta(tabla_banco: pandas.DataFrame, tabla_erp: pandas.DataFrame) -> tuple:
